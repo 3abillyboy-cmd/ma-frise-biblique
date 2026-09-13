@@ -1,0 +1,3055 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Ma frise biblique — V3 connectée</title>
+<style>
+:root{
+  --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
+  --muted:#94a3b8; --paper:#f8fafc; --grid:#dbe3ec;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+header{
+  height:58px;display:flex;align-items:center;gap:10px;padding:0 12px;
+  background:var(--panel);border-bottom:1px solid #263244;
+}
+header h1{font-size:18px;margin:0;flex:1}
+button{font:inherit}
+.btn{
+  border:0;border-radius:10px;padding:9px 11px;background:#1f2937;color:white;font-weight:650
+}
+.searchWrap{
+  display:flex;gap:8px;padding:8px 10px;background:#0f172a;border-bottom:1px solid #1f2937
+}
+.searchWrap input{
+  flex:1;min-width:0;border:1px solid #334155;border-radius:12px;
+  padding:10px 12px;background:#111827;color:#fff;font-size:15px
+}
+.searchWrap button{
+  border:0;border-radius:12px;padding:10px 12px;background:#2563eb;color:#fff;font-weight:800
+}
+.searchFilters{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:8px 10px 9px;
+  background:#0f172a;
+  border-bottom:1px solid #1f2937;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.searchFilters::-webkit-scrollbar{display:none}
+.filterChip{
+  flex:0 0 auto;
+  border:1px solid #475569;
+  border-radius:999px;
+  padding:9px 12px;
+  min-height:38px;
+  background:#1e293b;
+  color:#e2e8f0;
+  font-size:13px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.filterChip.active{
+  background:#2563eb;
+  border-color:#60a5fa;
+  color:#fff;
+}
+#searchResults{
+  display:none;background:#111827;border-bottom:1px solid #334155;
+  max-height:36vh;overflow-y:auto
+}
+.searchResult{
+  padding:11px 12px;color:#fff;border-bottom:1px solid #1f2937
+}
+.searchResult small{display:block;color:#94a3b8;margin-top:3px}
+.toolbar{
+  height:58px;display:flex;gap:8px;align-items:center;padding:8px 10px;
+  background:var(--panel2);border-bottom:1px solid #263244;overflow-x:auto;scrollbar-width:none
+}
+.toolbar::-webkit-scrollbar{display:none}
+.chip{
+  white-space:nowrap;padding:8px 10px;border-radius:999px;background:#1f2937;
+  font-size:13px;border:1px solid #334155
+}
+.chip.on{background:#334155}
+#stageWrap{
+  position:relative;height:calc(100vh - 245px);background:var(--paper);
+  touch-action:none;overflow:hidden;
+}
+canvas{width:100%;height:100%;display:block}
+.hint{
+  position:absolute;left:12px;top:10px;background:#0f172acc;color:#fff;
+  padding:7px 10px;border-radius:10px;font-size:12px;pointer-events:none
+}
+.fab{position:fixed;right:14px;bottom:18px;z-index:70;display:flex;flex-direction:column;align-items:flex-end;gap:9px}
+.fab button{border:0;font-weight:800;box-shadow:0 8px 24px #0004}
+.addMain{
+  min-height:48px;border-radius:999px!important;padding:0 17px!important;
+  background:#1667d9;color:#fff;font-size:16px;display:flex;align-items:center;gap:7px
+}
+.addMain span{font-size:14px}
+.addMenu{
+  display:none;flex-direction:column;gap:8px;padding:9px;
+  background:rgba(255,255,255,.97);border:1px solid #dce5ef;border-radius:18px;
+  box-shadow:0 14px 35px rgba(15,23,42,.22)
+}
+.addMenu.open{display:flex}
+.addMenu button{
+  min-width:150px;text-align:left;border-radius:13px!important;padding:11px 13px!important;
+  box-shadow:none!important
+}
+.fab.hiddenForCard{display:none!important}
+
+.person{background:#2563eb;color:#fff}
+.event{background:#f59e0b;color:#111827;border:2px solid #fff;font-size:15px}
+.reign{background:#8b5cf6;color:#fff;border:2px solid #fff;font-size:15px}
+.book{background:#14b8a6;color:#062b2a;border:2px solid #fff;font-size:15px}
+#info{
+  position:absolute;
+  z-index:90;
+  left:12px;right:12px;top:72px;
+  background:#111827f5;color:#fff;
+  padding:16px;border-radius:16px;display:none;
+  max-height:58%;overflow:hidden;
+  box-shadow:0 14px 34px #0006;
+  border:1px solid #334155
+}
+#info h3{margin:0 32px 10px 0;font-size:20px;line-height:1.25}
+#info p{margin:7px 0;color:#e5e7eb;font-size:15px;line-height:1.5}
+#close{
+  position:absolute;right:10px;top:8px;
+  background:#1f2937;border:0;color:#fff;
+  width:34px;height:34px;border-radius:999px;
+  font-size:18px;padding:0
+}
+
+#bookForm,
+#reignForm,
+#eventForm,
+#personForm{
+  position:fixed;
+  left:8px;right:8px;top:8px;bottom:8px;
+  z-index:9999;
+  background:#111827;color:white;border-radius:18px;
+  display:none;overflow:hidden;box-shadow:0 16px 40px #0008;
+  border:1px solid #334155
+}
+.formShell{position:relative;height:100%;min-height:0}
+.formHeader{position:absolute;left:0;right:0;top:0;height:58px;padding:16px;background:#111827;z-index:2}
+#bookForm h2,#reignForm h2,#eventForm h2,#personForm h2{font-size:20px;margin:0}
+.formScroll{
+  position:absolute;left:0;right:0;top:58px;bottom:76px;
+  padding:8px 16px 18px;overflow-y:auto;
+  -webkit-overflow-scrolling:touch
+}
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.formFull{grid-column:1/-1}
+label{display:block;font-size:12px;color:#cbd5e1;margin:0 0 5px}
+input,select,textarea{
+  width:100%;border:1px solid #475569;border-radius:10px;
+  background:#0f172a;color:#fff;padding:11px;font-size:16px
+}
+textarea{min-height:76px;resize:vertical}
+.dateRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.formActions{
+  position:absolute;left:0;right:0;bottom:0;height:76px;
+  display:flex;gap:10px;align-items:center;
+  background:#111827;border-top:1px solid #334155;
+  padding:10px 16px max(10px,env(safe-area-inset-bottom));
+  z-index:3
+}
+.formActions button{flex:1;border:0;border-radius:12px;height:52px;font-weight:800;font-size:17px}
+.saveBtn{background:#2563eb;color:#fff}
+.saveReignBtn{background:#8b5cf6;color:#fff}
+.saveBookBtn{background:#14b8a6;color:#062b2a}
+.cancelBtn{background:#374151;color:#fff}
+.smallNote{font-size:12px;color:#94a3b8;line-height:1.4;margin:10px 0 2px}
+.activityBox{border:1px solid #475569;border-radius:12px;padding:10px;margin:10px 0;background:#0b1220}
+.activityBox h3{font-size:15px;margin:0 0 9px}
+.activityRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.activityList{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.activityCard{border:1px solid #334155;border-radius:10px;padding:9px;background:#111827;font-size:13px}
+.activityCard button{margin-top:7px;border:0;border-radius:8px;padding:7px 9px;background:#7f1d1d;color:#fff;font-weight:700}
+.addActivityBtn{width:100%;border:0;border-radius:10px;padding:11px;background:#0f766e;color:#fff;font-weight:800}
+
+
+.dataBtn{
+  border:none !important;
+  font-weight:800;
+  color:#fff !important;
+  box-shadow:0 2px 8px #0003;
+}
+.exportBtn{background:#2563eb !important}
+.importBtn{background:#059669 !important}
+#itemActions{pointer-events:auto;opacity:1}
+
+.legendDot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+
+
+#info, #fullCard { touch-action: pan-y; }
+#info button, #fullCard button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select:none;
+}
+/* V2.6.4 — fiche rapide visuelle */
+#info{
+  border:1px solid #dbe5f0 !important;
+  border-radius:20px !important;
+  box-shadow:0 16px 38px rgba(15,23,42,.20) !important;
+  background:rgba(255,255,255,.98) !important;
+  color:#172033 !important;
+  overflow:hidden;
+  padding:0 !important;
+}
+#info .quickHead{
+  display:flex;align-items:flex-start;gap:11px;
+  padding:17px 18px 12px;
+}
+#info .quickDot{
+  width:18px;height:18px;border-radius:50%;flex:0 0 auto;margin-top:5px;
+  box-shadow:0 0 0 4px rgba(148,163,184,.15);
+}
+#info .quickTitle{font-size:21px;font-weight:900;line-height:1.1;color:#172033}
+#info .quickType{font-size:12px;font-weight:800;color:#64748b;margin-top:4px;text-transform:uppercase;letter-spacing:.04em}
+#info .quickClose{
+  margin-left:auto;border:0;background:transparent;color:#94a3b8;
+  font-size:25px;line-height:1;padding:0 0 8px 12px
+}
+#info .quickDates{
+  padding:0 18px 14px;font-size:16px;font-weight:800;color:#26364d
+}
+#info .quickBody{
+  border-top:1px solid #edf2f7;padding:13px 18px 14px;
+  font-size:14px;line-height:1.45;white-space:pre-line;color:#334155
+}
+#info .quickMeta{
+  border-top:1px solid #edf2f7;padding:11px 18px 13px;
+  display:grid;gap:9px;font-size:14px;color:#334155
+}
+#info .quickMetaRow{display:flex;gap:9px;align-items:flex-start}
+#info .quickMetaIcon{width:22px;flex:0 0 22px;text-align:center}
+#info .quickActions{
+  display:flex;gap:8px;padding:11px 14px 14px;border-top:1px solid #edf2f7
+}
+#info .quickActions button{
+  flex:1;min-height:43px;border-radius:12px;border:1px solid #d8e2ee;
+  background:#f4f8fc;color:#145fc4;font-weight:850;font-size:13px
+}
+#info .quickActions button.danger{color:#b42318;background:#fff7f6;border-color:#ffd5d0}
+
+
+/* V2.6.4 — fiche complète */
+#fullCard{
+  display:none;position:fixed;inset:0;z-index:12000;background:#f4f7fb;color:#172033;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.fullTop{
+  position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;
+  min-height:58px;padding:8px 12px;background:#fff;border-bottom:1px solid #e4ebf3;
+}
+.fullBack{border:0;background:#eef4fb;color:#145fc4;border-radius:12px;padding:10px 12px;font-weight:900}
+.fullTopTitle{font-size:17px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fullHero{padding:22px 18px 18px;background:linear-gradient(180deg,#eaf4ff,#f4f7fb)}
+.fullBadge{display:inline-block;padding:6px 10px;border-radius:999px;background:#dbeafe;color:#155fc1;font-size:12px;font-weight:900;text-transform:uppercase}
+.fullName{font-size:30px;font-weight:950;line-height:1.05;margin-top:11px}
+.fullDates{font-size:17px;font-weight:850;color:#41536c;margin-top:8px}
+.fullContent{padding:0 14px 28px;display:grid;gap:12px}
+.fullSection{background:#fff;border:1px solid #e2eaf3;border-radius:18px;padding:16px;box-shadow:0 5px 16px rgba(15,23,42,.05)}
+.fullSection h3{margin:0 0 10px;font-size:14px;color:#145fc4;text-transform:uppercase;letter-spacing:.04em}
+.fullSection p{margin:0;line-height:1.55;white-space:pre-line}
+.fullActivity{padding:10px 0;border-bottom:1px solid #edf2f7}
+.fullActivity:last-child{border-bottom:0}
+.fullActivity strong{display:block;font-size:15px}
+.fullActivity small{display:block;color:#64748b;margin-top:4px;line-height:1.4}
+.fullActions{display:flex;gap:9px}
+.fullActions button{flex:1;min-height:46px;border:0;border-radius:13px;font-weight:900}
+.fullEdit{background:#e8f2ff;color:#145fc4}.fullDelete{background:#fff0ee;color:#b42318}
+
+
+/* V2.6.4 — images */
+.imagePicker{display:grid;gap:9px}
+.imagePicker input[type=file]{padding:10px;background:#f8fafc;border:1px solid #dbe5ef;border-radius:12px}
+.imagePreviewBox{display:none;position:relative;border-radius:16px;overflow:hidden;background:#e8eef5;min-height:130px}
+.imagePreviewBox img{display:block;width:100%;height:180px;object-fit:cover}
+.imageRemove{position:absolute;right:9px;top:9px;border:0;border-radius:999px;background:rgba(255,255,255,.92);padding:8px 11px;font-weight:900;color:#b42318}
+.fullImageWrap{margin:-2px -2px 2px;border-radius:18px;overflow:hidden;background:#dfe8f2}
+.fullImageWrap img{display:block;width:100%;max-height:310px;object-fit:cover}
+
+
+.searchPanel{
+  margin:8px 8px 6px;
+  border:1px solid #334155;
+  border-radius:16px;
+  overflow:hidden;
+  background:#0f172a;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+}
+.searchPanelTitle{
+  padding:9px 11px 3px;
+  font-size:12px;
+  font-weight:850;
+  color:#cbd5e1;
+  letter-spacing:.02em;
+}
+.searchPanel .searchWrap{
+  border-bottom:0;
+  padding-top:6px;
+}
+.searchPanel .searchFilters{
+  border-bottom:0;
+  padding-top:4px;
+}
+.dataToolbar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:5px 10px 7px;
+  background:var(--panel2);
+  border-bottom:1px solid #263244;
+}
+.dataToolbarLabel{
+  color:#94a3b8;
+  font-size:12px;
+  font-weight:800;
+  margin-right:auto;
+}
+.dataToolbar .chip{margin:0}
+
+/* ===== V3 connectée ===== */
+.v3State{
+  flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
+  background:#334155;color:#e2e8f0;white-space:nowrap
+}
+.v3State.ok{background:#14532d;color:#dcfce7}
+.v3State.wait{background:#78350f;color:#fef3c7}
+.v3State.off{background:#7f1d1d;color:#fee2e2}
+#accountBtn{max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#readonlyBanner{
+  display:none;padding:7px 10px;text-align:center;background:#dbeafe;color:#1e40af;
+  border-bottom:1px solid #bfdbfe;font-size:12px;font-weight:850
+}
+body.v3ReadOnly #readonlyBanner{display:block}
+body.v3ReadOnly #addFab{display:none!important}
+body.v3ReadOnly .importBtn{display:none!important}
+
+.v3Overlay{
+  position:fixed;inset:0;z-index:20000;background:rgba(2,6,23,.84);
+  display:none;align-items:center;justify-content:center;padding:16px
+}
+.v3Overlay.show{display:flex}
+.v3Card{
+  width:min(440px,100%);max-height:92vh;overflow-y:auto;background:#fff;color:#0f172a;
+  border-radius:22px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.4)
+}
+.v3Card h2{margin:0 0 6px;font-size:24px}
+.v3Sub{margin:0 0 16px;color:#64748b;line-height:1.45}
+.v3Grid{display:grid;gap:10px}
+.v3Grid label{color:#334155;font-size:13px;font-weight:850}
+.v3Grid input{
+  margin-top:5px;width:100%;box-sizing:border-box;border:1px solid #cbd5e1;
+  border-radius:12px;padding:12px;background:#fff;color:#0f172a;font-size:16px
+}
+.v3Row{display:flex;gap:9px;margin-top:10px}
+.v3Row>*{flex:1}
+.v3Primary,.v3Secondary,.v3Danger{
+  border:0;border-radius:13px;padding:12px 14px;font-weight:900;font-size:15px
+}
+.v3Primary{background:#2563eb;color:#fff}
+.v3Secondary{background:#e2e8f0;color:#0f172a}
+.v3Danger{background:#fee2e2;color:#991b1b}
+#v3AuthMsg{min-height:20px;margin-top:10px;color:#475569;font-size:13px}
+#v3AuthMsg.error{color:#b91c1c}
+.v3Role{
+  display:inline-block;padding:6px 10px;border-radius:999px;background:#dbeafe;
+  color:#1d4ed8;font-size:12px;font-weight:900
+}
+.v3Pending{
+  padding:14px;border:1px solid #fde68a;border-radius:14px;background:#fffbeb;
+  color:#78350f;line-height:1.45
+}
+.v3Request{padding:12px;border:1px solid #e2e8f0;border-radius:14px;margin-top:9px}
+.v3Request strong{display:block;overflow-wrap:anywhere}
+.v3Request small{display:block;color:#64748b;margin-top:3px}
+.v3ReqActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.v3ReqActions button{border:0;border-radius:10px;padding:8px 10px;font-weight:850}
+.v3Visitor{background:#e2e8f0}.v3Editor{background:#dbeafe;color:#1d4ed8}.v3Reject{background:#fee2e2;color:#991b1b}
+.v3Setup{
+  padding:14px;border:1px solid #fbbf24;border-radius:14px;background:#fffbeb;
+  color:#78350f;line-height:1.45
+}
+
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+
+</head>
+<body>
+
+<div id="v3AuthOverlay" class="v3Overlay">
+  <div class="v3Card">
+    <h2>🔐 Accès à la frise</h2>
+    <p class="v3Sub">Connecte-toi avec ton adresse e-mail et ton mot de passe.</p>
+
+    <div id="v3SetupBox" class="v3Setup" style="display:none">
+      <strong>Configuration Firebase manquante.</strong><br>
+      La V3 est prête. Il reste seulement à mettre les valeurs complètes de ton application Web Firebase dans <code>firebase-config.js</code>.
+    </div>
+
+    <div id="v3LoginBox">
+      <div class="v3Grid">
+        <label>Adresse e-mail
+          <input id="v3Email" type="email" autocomplete="email" placeholder="nom@exemple.fr">
+        </label>
+        <label>Mot de passe
+          <input id="v3Password" type="password" autocomplete="current-password" placeholder="••••••••">
+        </label>
+      </div>
+      <div class="v3Row">
+        <button id="v3LoginBtn" class="v3Primary" type="button">Se connecter</button>
+        <button id="v3SignupBtn" class="v3Secondary" type="button">Créer un compte</button>
+      </div>
+      <div class="v3Row">
+        <button id="v3ResetBtn" class="v3Secondary" type="button">Mot de passe oublié</button>
+      </div>
+      <div id="v3AuthMsg"></div>
+    </div>
+
+    <div id="v3PendingBox" style="display:none">
+      <div class="v3Pending">
+        <strong>⏳ Demande d’accès enregistrée</strong><br>
+        Ton compte existe, mais l’administrateur doit encore t’attribuer le rôle Visiteur ou Éditeur.
+      </div>
+      <div class="v3Row">
+        <button id="v3PendingLogout" class="v3Secondary" type="button">Se déconnecter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="v3AccountOverlay" class="v3Overlay">
+  <div class="v3Card">
+    <h2>👤 Mon compte</h2>
+    <p id="v3AccountEmail" class="v3Sub"></p>
+    <p><span id="v3AccountRole" class="v3Role">—</span></p>
+
+    <div id="v3AdminRequests" style="display:none">
+      <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
+      <h3 style="margin:0">Demandes d’accès</h3>
+      <p class="v3Sub">Attribue un rôle aux nouveaux comptes.</p>
+      <div id="v3RequestsList"></div>
+    </div>
+
+    <div class="v3Row">
+      <button id="v3AccountClose" class="v3Secondary" type="button">Fermer</button>
+      <button id="v3LogoutBtn" class="v3Danger" type="button">Se déconnecter</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <h1>📖 Ma frise biblique</h1>
+  <span id="v3State" class="v3State off">Local</span>
+  <button class="btn" onclick="focusBiblical()">1000 av.</button>
+  <button class="btn" onclick="resetView()">Recentrer</button>
+  <button class="btn" id="accountBtn" type="button">👤 Compte</button>
+</header>
+<div id="readonlyBanner">👁 Mode visiteur — consultation uniquement</div>
+
+<div class="searchPanel">
+  <div class="searchPanelTitle">🔎 Rechercher dans la frise</div>
+  <div class="searchWrap">
+    <input id="personSearch" type="search" placeholder="Nom, lieu, date, livre…" autocomplete="off">
+    <button id="searchBtn" type="button">Rechercher</button>
+  </div>
+  <div class="searchFilters">
+    <button class="filterChip active" data-kind="person" type="button">👤 Personnages</button>
+    <button class="filterChip" data-kind="event" type="button">⚡ Événements</button>
+    <button class="filterChip" data-kind="date" type="button">📅 Dates</button>
+    <button class="filterChip" data-kind="book" type="button">📖 Livres</button>
+    <button class="filterChip" data-kind="reign" type="button">👑 Règnes</button>
+    <button class="filterChip" data-kind="place" type="button">📍 Lieux</button>
+  </div>
+  <div id="searchResults"></div>
+</div>
+
+<div class="dataToolbar">
+  <span class="dataToolbarLabel">Sauvegarde</span>
+  <button class="chip dataBtn exportBtn" onclick="exportTimeline()">⬇ Exporter</button>
+  <button class="chip dataBtn importBtn" onclick="document.getElementById('importFile').click()">⬆ Importer</button>
+  <input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importTimeline(event)">
+</div>
+
+<div id="stageWrap">
+  <canvas id="c"></canvas>
+  
+
+  <div class="fab" id="addFab">
+    <div class="addMenu" id="addMenu">
+      <button class="person" type="button" onclick="chooseAdd('person')">👤 Personnage</button>
+      <button class="event" type="button" onclick="chooseAdd('event')">⚡ Événement</button>
+      <button class="reign" type="button" onclick="chooseAdd('reign')">👑 Règne</button>
+      <button class="book" type="button" onclick="chooseAdd('book')">📘 Livre</button>
+    </div>
+    <button class="addMain" id="addMain" type="button" onclick="toggleAddMenu(event)">＋ <span>Ajouter</span></button>
+  </div>
+
+
+  
+
+
+<div id="bookForm" style="display:none">
+  <div class="formShell">
+    <div class="formHeader">
+      <h2>📘 Ajouter un livre biblique</h2>
+    </div>
+
+    <div class="formScroll">
+      <div class="formGrid">
+        <div class="formFull">
+          <label for="bName">Nom du livre</label>
+          <input id="bName" placeholder="Ex. Jérémie">
+        </div>
+
+        <div class="formFull">
+          <label for="bAuthor">Auteur / rédacteur</label>
+          <input id="bAuthor" placeholder="Ex. Jérémie">
+        </div>
+
+        <div class="formFull">
+          <label>Période historique couverte — début</label>
+          <div class="dateRow">
+            <input id="bCoverStartYear" type="number" inputmode="numeric" placeholder="Année">
+            <select id="bCoverStartEra">
+              <option value="bce">av. n. è.</option>
+              <option value="ce">de n. è.</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="formFull">
+          <label>Précision du début</label>
+          <select id="bCoverStartCert">
+            <option value="exact">Exacte</option>
+            <option value="approx">Approximative</option>
+            <option value="unknown">Incertaine</option>
+          </select>
+        </div>
+
+        <div class="formFull">
+          <label>Période historique couverte — fin</label>
+          <div class="dateRow">
+            <input id="bCoverEndYear" type="number" inputmode="numeric" placeholder="Année">
+            <select id="bCoverEndEra">
+              <option value="bce">av. n. è.</option>
+              <option value="ce">de n. è.</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="formFull">
+          <label>Précision de la fin</label>
+          <select id="bCoverEndCert">
+            <option value="exact">Exacte</option>
+            <option value="approx">Approximative</option>
+            <option value="unknown">Incertaine</option>
+          </select>
+        </div>
+
+        <div class="formFull">
+          <label>Rédaction — début</label>
+          <div class="dateRow">
+            <input id="bWriteStartYear" type="number" inputmode="numeric" placeholder="Année">
+            <select id="bWriteStartEra">
+              <option value="bce">av. n. è.</option>
+              <option value="ce">de n. è.</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="formFull">
+          <label>Précision du début de rédaction</label>
+          <select id="bWriteStartCert">
+            <option value="exact">Exacte</option>
+            <option value="approx">Approximative</option>
+            <option value="unknown">Incertaine</option>
+          </select>
+        </div>
+
+        <div class="formFull">
+          <label>Rédaction — fin</label>
+          <div class="dateRow">
+            <input id="bWriteEndYear" type="number" inputmode="numeric" placeholder="Année">
+            <select id="bWriteEndEra">
+              <option value="bce">av. n. è.</option>
+              <option value="ce">de n. è.</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="formFull">
+          <label>Précision de la fin de rédaction</label>
+          <select id="bWriteEndCert">
+            <option value="exact">Exacte</option>
+            <option value="approx">Approximative</option>
+            <option value="unknown">Incertaine</option>
+          </select>
+        </div>
+
+        <div class="formFull">
+          <label for="bPlace">📍 Lieu principal / lieux concernés</label>
+          <input id="bPlace" placeholder="Ex. Jérusalem, Babylone…">
+        </div>
+
+        
+        <div class="formFull">
+          <label>🖼️ Image</label>
+          <div class="imagePicker">
+            <input id="bImageFile" type="file" accept="image/*" onchange="pickEntityImage('b',this)">
+            <div id="bImagePreviewBox" class="imagePreviewBox">
+              <img id="bImagePreview" alt="Aperçu">
+              <button class="imageRemove" type="button" onclick="removeEntityImage('b')">✕ Retirer</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="formFull">
+          <label for="bRefs">Références / source</label>
+          <input id="bRefs" placeholder="Ex. Jérémie 1:1-3">
+        </div>
+
+        <div class="formFull">
+          <label for="bNotes">Notes</label>
+          <textarea id="bNotes" placeholder="Notes personnelles"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="formActions">
+      <button class="cancelBtn" onclick="closeBookForm()">Annuler</button>
+      <button class="saveBookBtn" onclick="saveBook()">✓ Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div id="reignForm" style="display:none">
+  <div class="formShell">
+    <div class="formHeader">
+      <h2>👑 Ajouter un règne</h2>
+    </div>
+    <div class="formScroll">
+      <div class="formGrid">
+        <div class="formFull">
+          <label for="rName">Souverain</label>
+          <input id="rName" placeholder="Ex. Ézéchias">
+        </div>
+        <div class="formFull">
+          <label for="rKingdom">Royaume / puissance</label>
+          <select id="rKingdom" onchange="updateReignColor()">
+            <option value="united">Israël — royaume uni</option>
+            <option value="judah">Juda</option>
+            <option value="ten">Royaume des dix tribus</option>
+            <option value="foreign">Souverain étranger</option>
+          </select>
+        </div>
+        <div class="formFull" id="rForeignBlock" style="display:none">
+          <label for="rPower">Nation / empire</label>
+          <input id="rPower" placeholder="Ex. Babylone, Perse, Égypte, Rome">
+        </div>
+        <div class="formFull">
+          <label>Début du règne</label>
+          <div class="dateRow">
+            <input id="rStartYear" type="number" inputmode="numeric" placeholder="Année">
+            <select id="rStartEra"><option value="bce">av. n. è.</option><option value="ce">de n. è.</option></select>
+          </div>
+        </div>
+        <div class="formFull">
+          <label>Précision du début</label>
+          <select id="rStartCert"><option value="exact">Exacte</option><option value="approx">Approximative</option><option value="unknown">Incertaine</option></select>
+        </div>
+        <div class="formFull">
+          <label>Fin du règne</label>
+          <div class="dateRow">
+            <input id="rEndYear" type="number" inputmode="numeric" placeholder="Année">
+            <select id="rEndEra"><option value="bce">av. n. è.</option><option value="ce">de n. è.</option></select>
+          </div>
+        </div>
+        <div class="formFull">
+          <label>Précision de la fin</label>
+          <select id="rEndCert"><option value="exact">Exacte</option><option value="approx">Approximative</option><option value="unknown">Incertaine</option></select>
+        </div>
+        <div class="formFull">
+          <label for="rPlace">📍 Lieu principal / capitale</label>
+          <input id="rPlace" placeholder="Ex. Jérusalem, Samarie, Babylone…">
+        </div>
+
+        
+        <div class="formFull">
+          <label>🖼️ Image</label>
+          <div class="imagePicker">
+            <input id="rImageFile" type="file" accept="image/*" onchange="pickEntityImage('r',this)">
+            <div id="rImagePreviewBox" class="imagePreviewBox">
+              <img id="rImagePreview" alt="Aperçu">
+              <button class="imageRemove" type="button" onclick="removeEntityImage('r')">✕ Retirer</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="formFull">
+          <label for="rRefs">Références bibliques</label>
+          <input id="rRefs" placeholder="Ex. 2 Rois 18:1-3">
+        </div>
+        <div class="formFull">
+          <label for="rNotes">Notes</label>
+          <textarea id="rNotes" placeholder="Notes personnelles"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="formActions">
+      <button class="cancelBtn" onclick="closeReignForm()">Annuler</button>
+      <button class="saveReignBtn" onclick="saveReign()">✓ Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div id="eventForm" style="display:none">
+  <div class="formShell">
+    <div class="formHeader">
+      <h2 style="margin:0">📍 Ajouter un événement</h2>
+      <button class="closeFormBtn" onclick="closeEventForm()">✕</button>
+    </div>
+
+    <div class="formScroll">
+      <label>Nom de l'événement</label>
+      <input id="eName" type="text" placeholder="Ex. Destruction de Jérusalem">
+
+      <label>Type</label>
+      <select id="eMode" onchange="toggleEventMode()">
+        <option value="point">Date précise</option>
+        <option value="period">Période</option>
+      </select>
+
+      <div class="formRow">
+        <div>
+          <label>Date / début</label>
+          <input id="eStartYear" type="number" min="1" inputmode="numeric" placeholder="607">
+        </div>
+        <div>
+          <label>Ère</label>
+          <select id="eStartEra">
+            <option value="bce">av. n. è.</option>
+            <option value="ce">de n. è.</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Certitude</label>
+      <select id="eStartCert">
+        <option value="exact">Exacte</option>
+        <option value="approx">Approximative</option>
+        <option value="unknown">Incertaine</option>
+      </select>
+
+      <div id="eventEndBlock" style="display:none">
+        <div class="formRow">
+          <div>
+            <label>Fin</label>
+            <input id="eEndYear" type="number" min="1" inputmode="numeric" placeholder="539">
+          </div>
+          <div>
+            <label>Ère</label>
+            <select id="eEndEra">
+              <option value="bce">av. n. è.</option>
+              <option value="ce">de n. è.</option>
+            </select>
+          </div>
+        </div>
+
+        <label>Certitude de fin</label>
+        <select id="eEndCert">
+          <option value="exact">Exacte</option>
+          <option value="approx">Approximative</option>
+          <option value="unknown">Incertaine</option>
+        </select>
+      </div>
+
+      <label>Lieu</label>
+      <input id="ePlace" type="text" placeholder="Ex. Jérusalem">
+
+      
+      <div class="formFull">
+          <label>🖼️ Image</label>
+          <div class="imagePicker">
+            <input id="eImageFile" type="file" accept="image/*" onchange="pickEntityImage('e',this)">
+            <div id="eImagePreviewBox" class="imagePreviewBox">
+              <img id="eImagePreview" alt="Aperçu">
+              <button class="imageRemove" type="button" onclick="removeEntityImage('e')">✕ Retirer</button>
+            </div>
+          </div>
+        </div>
+
+      <label>Références bibliques</label>
+      <textarea id="eRefs" rows="3" placeholder="Ex. 2 Rois 25:1-10"></textarea>
+
+      <label>Notes</label>
+      <textarea id="eNotes" rows="4" placeholder="Notes personnelles"></textarea>
+    </div>
+
+    <div class="formActions">
+      <button class="btn" onclick="closeEventForm()">Annuler</button>
+      <button class="btn saveEventBtn" onclick="saveEvent()">✓ Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div id="personForm">
+    <div class="formShell">
+      <div class="formHeader">
+        <h2>👤 Ajouter un personnage</h2>
+      </div>
+
+      <div class="formScroll">
+        <div class="formGrid">
+          <div class="formFull">
+            <label for="pName">Nom</label>
+            <input id="pName" placeholder="Ex. Ézéchias">
+          </div>
+
+          <div class="formFull">
+            <label for="pRole">Rôle principal</label>
+            <select id="pRole">
+              <option>Personnage</option>
+              <option>Roi</option>
+              <option>Prophète</option>
+              <option>Juge</option>
+              <option>Prêtre</option>
+              <option>Apôtre</option>
+              <option>Berger</option>
+              <option>Guerrier</option>
+              <option>Autre</option>
+            </select>
+          </div>
+
+          <div class="formFull activityBox">
+            <h3>🧩 Périodes de vie / fonctions</h3>
+            <div class="smallNote">Ajoute autant de périodes que nécessaire. Elles peuvent se suivre ou se chevaucher.</div>
+            <label>Fonction / activité</label>
+            <input id="aLabel" placeholder="Ex. Berger, prophète, roi de Juda…">
+            <div class="activityRow">
+              <div><label>Début</label><input id="aStartYear" type="number" inputmode="numeric" placeholder="Année"></div>
+              <div><label>Ère</label><select id="aStartEra"><option value="bce">av. n. è.</option><option value="ce">de n. è.</option></select></div>
+            </div>
+            <div class="activityRow">
+              <div><label>Fin</label><input id="aEndYear" type="number" inputmode="numeric" placeholder="Année"></div>
+              <div><label>Ère</label><select id="aEndEra"><option value="bce">av. n. è.</option><option value="ce">de n. è.</option></select></div>
+            </div>
+            <div class="activityRow">
+              <div><label>Début</label><select id="aStartCert"><option value="exact">Exact</option><option value="approx">Approximatif</option><option value="unknown">Incertain</option></select></div>
+              <div><label>Fin</label><select id="aEndCert"><option value="exact">Exacte</option><option value="approx">Approximative</option><option value="unknown">Incertaine</option></select></div>
+            </div>
+            <label>📍 Lieu de cette période</label>
+            <input id="aPlace" placeholder="Ex. Bethléhem, Jérusalem…">
+            <label>Références / notes de cette période</label>
+            <input id="aRef" placeholder="Ex. 1 Samuel 16–17">
+            <button type="button" class="addActivityBtn" onclick="addDraftActivity()">＋ Ajouter cette période</button>
+            <div id="activityDraftList" class="activityList"></div>
+          </div>
+
+          <div class="formFull">
+            <label>Naissance / début de vie</label>
+            <div class="dateRow">
+              <input id="pStartYear" type="number" inputmode="numeric" placeholder="Année">
+              <select id="pStartEra">
+                <option value="bce">av. n. è.</option>
+                <option value="ce">de n. è.</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="formFull">
+            <label for="pStartCert">Précision de la date de début</label>
+            <select id="pStartCert">
+              <option value="exact">Exacte</option>
+              <option value="approx">Approximative</option>
+              <option value="unknown">Incertaine</option>
+            </select>
+          </div>
+
+          <div class="formFull">
+            <label>Mort / fin de vie</label>
+            <div class="dateRow">
+              <input id="pEndYear" type="number" inputmode="numeric" placeholder="Année">
+              <select id="pEndEra">
+                <option value="bce">av. n. è.</option>
+                <option value="ce">de n. è.</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="formFull">
+            <label for="pEndCert">Précision de la date de fin</label>
+            <select id="pEndCert">
+              <option value="exact">Exacte</option>
+              <option value="approx">Approximative</option>
+              <option value="unknown">Incertaine</option>
+            </select>
+          </div>
+
+          <div class="formFull">
+            <label for="pPlace">📍 Lieu principal / région</label>
+            <input id="pPlace" placeholder="Ex. Bethléhem, Jérusalem…">
+          </div>
+
+          
+          <div class="formFull">
+            <label>🖼️ Image</label>
+            <div class="imagePicker">
+              <input id="pImageFile" type="file" accept="image/*" onchange="pickEntityImage('p',this)">
+              <div id="pImagePreviewBox" class="imagePreviewBox">
+                <img id="pImagePreview" alt="Aperçu">
+                <button class="imageRemove" type="button" onclick="removeEntityImage('p')">✕ Retirer</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="formFull">
+            <label for="pRefs">Références bibliques</label>
+            <input id="pRefs" placeholder="Ex. 2 Rois 18–20 ; Isaïe 36–39">
+          </div>
+
+          <div class="formFull">
+            <label for="pNotes">Notes personnelles</label>
+            <textarea id="pNotes" placeholder="Tes remarques, sources, explications sur les dates…"></textarea>
+          </div>
+        </div>
+
+        <p class="smallNote">Les modifications sont sauvegardées localement et synchronisées en ligne quand tu es connecté.</p>
+      </div>
+
+      <div class="formActions">
+        <button class="cancelBtn" onclick="closePersonForm()">Annuler</button>
+        <button class="saveBtn" onclick="savePerson()">✓ Ajouter</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="info">
+    <button id="close" onclick="closeInfo()">✕</button>
+    <h3 id="it"></h3>
+    <p id="id"></p>
+    <p id="idates"></p>
+    <p id="iduration"></p>
+    <p id="ir"></p>
+    <p id="inotes"></p>
+    <div id="itemActions" style="display:none;gap:10px;margin-top:14px">
+      <button class="btn" style="flex:1;background:#2563eb" onclick="editSelectedPerson()">✏ Modifier</button>
+      <button class="btn" style="flex:1;background:#7f1d1d" onclick="deleteSelectedPerson()">🗑 Supprimer</button>
+    </div>
+    <p id="scrollHint" style="display:none;color:#94a3b8;font-size:12px;margin-top:12px">Fais défiler cette fiche pour voir la suite.</p>
+  </div>
+</div>
+
+
+<div id="fullCard">
+  <div class="fullTop">
+    <button id="fullBack" class="fullBack" type="button">← Retour</button>
+    <div id="fullTopTitle" class="fullTopTitle"></div>
+  </div>
+  <div id="fullHero" class="fullHero">
+    <span id="fullBadge" class="fullBadge"></span>
+    <div id="fullName" class="fullName"></div>
+    <div id="fullDates" class="fullDates"></div>
+  </div>
+  <div id="fullContent" class="fullContent"></div>
+</div>
+
+<script>
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const wrap=document.getElementById('stageWrap');
+const info=document.getElementById('info');
+const it=document.getElementById('it');
+const id=document.getElementById('id');
+const idates=document.getElementById('idates');
+const iduration=document.getElementById('iduration');
+const ir=document.getElementById('ir');
+ir.style.whiteSpace='pre-line';
+const inotes=document.getElementById('inotes');
+const scrollHint=document.getElementById('scrollHint');
+const itemActions=document.getElementById('itemActions');
+let selectedItem=null;
+let editingItemId=null;
+let actionEnableTimer=null;
+let editingEventId=null;
+let editingReignId=null;
+let editingBookId=null;
+let draftActivities=[];
+
+let quickActionBusy=false;
+
+function stopCardPointerPropagation(e){
+  e.stopPropagation();
+}
+['pointerdown','pointerup','pointercancel','touchstart','touchend'].forEach(type=>{
+  info.addEventListener(type,stopCardPointerPropagation,{passive:true});
+});
+const fullCardEl=document.getElementById('fullCard');
+['pointerdown','pointerup','pointercancel','touchstart','touchend'].forEach(type=>{
+  fullCardEl.addEventListener(type,stopCardPointerPropagation,{passive:true});
+});
+
+function runQuickAction(e,fn){
+  if(e){
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  if(quickActionBusy) return;
+  quickActionBusy=true;
+  try{ fn(); }
+  finally{ setTimeout(()=>{quickActionBusy=false;},180); }
+}
+
+
+let rows = [
+ {name:'Saül',type:'Personnage',start:-1117,end:-1078,color:'#3b82f6',y:86,ref:'1 Samuel',notes:'Période de vie de démonstration.',fadeStart:true,fadeEnd:true},
+ {name:'David',type:'Personnage',start:-1107,end:-1037,color:'#3b82f6',y:132,ref:'1 Samuel ; 2 Samuel',notes:'Vie + événements + règne liés dans une même fiche.',fadeStart:true,fadeEnd:true},
+ {name:'Salomon',type:'Personnage',start:-1074,end:-993,color:'#3b82f6',y:178,ref:'1 Rois 1–11',notes:'Exemple de personnage avec fin de vie estimée.',fadeEnd:true},
+
+ {name:'Règne de Saül',type:'Règne — royaume uni',start:-1097,end:-1078,color:'#8b5cf6',y:252,ref:'1 Samuel 10–31',notes:'Couleur distincte des personnages.'},
+ {name:'Règne de David',type:'Règne — royaume uni',start:-1077,end:-1037,color:'#8b5cf6',y:298,ref:'2 Samuel 5:4,5',notes:'Une période de règne séparée de sa période de vie.'},
+ {name:'Règne de Salomon',type:'Règne — royaume uni',start:-1037,end:-998,color:'#8b5cf6',y:344,ref:'1 Rois 2:12',notes:'Exemple de règne.'},
+
+ {name:'Jérémie',type:'Prophète — activité',start:-647,end:-580,color:'#10b981',y:428,ref:'Jérémie 1:1-3',notes:'Activité prophétique affichée comme une période.',fadeStart:true,fadeEnd:true},
+ {name:'Livre de Jérémie',type:'Livre biblique — période couverte',start:-647,end:-580,color:'#14b8a6',y:474,ref:'Livre de Jérémie',notes:'Sélectionner un livre permettra ensuite d’afficher automatiquement son contexte.'}
+];
+
+
+rows.forEach((o,i)=>{
+  if(!o.id) o.id='builtin_row_'+i;
+  if(o.userCreated===undefined) o.userCreated=true;
+  o.builtIn=true;
+  o.locked=false;
+});
+const points = [
+ {name:'David et Goliath',type:'Événement',year:-1080,y:552,color:'#f59e0b',ref:'1 Samuel 17',notes:'Événement ponctuel.'},
+ {name:'Prise de Jérusalem',type:'Événement',year:-1070,y:596,color:'#f59e0b',ref:'2 Samuel 5:6-9',notes:'Événement ponctuel.'},
+ {name:'Destruction de Jérusalem',type:'Événement',year:-607,y:640,color:'#ef4444',ref:'2 Rois 25 ; Jérémie 39',notes:'Exemple pour la période de Jérémie.'}
+];
+points.forEach((o,i)=>{
+  if(!o.id) o.id='builtin_point_'+i;
+  if(o.userCreated===undefined) o.userCreated=true;
+  o.builtIn=true;
+  o.locked=false;
+});
+
+
+let centerYear=-1000;
+let pxPerYear=2.3;
+let offsetY=0;
+
+function yearToX(year){
+  return wrap.clientWidth/2 + (year-centerYear)*pxPerYear;
+}
+function xToYear(x){
+  return centerYear + (x-wrap.clientWidth/2)/pxPerYear;
+}
+function formatYear(y){
+  const yr=Math.round(y);
+  if(yr<0) return Math.abs(yr)+' av. n. è.';
+  if(yr===0) return '1 de n. è.';
+  return yr+' de n. è.';
+}
+
+function certaintyLabel(value){
+  if(value==='exact') return 'exacte';
+  if(value==='approx') return 'approximative';
+  if(value==='unknown') return 'incertaine';
+  return '';
+}
+
+function certaintyFromItem(item, which){
+  const direct = which==='start' ? item.startCert : item.endCert;
+  if(direct) return certaintyLabel(direct);
+
+  const fade = which==='start' ? item.fadeStart : item.fadeEnd;
+  return fade ? 'approximative' : 'exacte';
+}
+
+function durationLabel(start,end){
+  if(start===undefined || end===undefined || start===null || end===null) return '';
+  let years = end - start;
+
+  // Our internal scale has no historical year zero. Correct cross-era spans.
+  if(start < 0 && end > 0) years -= 1;
+
+  years = Math.round(Math.abs(years));
+  if(years===0) return 'moins d’un an';
+  if(years===1) return '1 an';
+  return years+' ans';
+}
+
+
+let sectionY={
+  persons:54,
+  reigns:220,
+  books:396,
+  events:520,
+  bottom:680
+};
+
+function layoutKind(o){
+  const type=String(o.type||'');
+  if(o.entityKind==='reign' || type.startsWith('Règne')) return 'reigns';
+  if(o.entityKind==='book' || type.startsWith('Livre biblique')) return 'books';
+  if(o.entityKind==='event' || o.year!==undefined || type==='Événement') return 'events';
+
+  // Keep the old demo prophet in the "Prophètes / Livres" section.
+  if(!o.entityKind && type.startsWith('Prophète')) return 'books';
+
+  return 'persons';
+}
+
+function itemRange(o){
+  if(o.year!==undefined) return {start:o.year-8,end:o.year+8};
+  return {start:Number(o.start),end:Number(o.end)};
+}
+
+function assignLanes(items,firstY,rowGap){
+  const laneEnds=[];
+  let maxLane=-1;
+
+  items
+    .slice()
+    .sort((a,b)=>{
+      const ra=itemRange(a), rb=itemRange(b);
+      return ra.start-rb.start || ra.end-rb.end;
+    })
+    .forEach(o=>{
+      const r=itemRange(o);
+      let lane=0;
+      while(lane<laneEnds.length && r.start<=laneEnds[lane]+2) lane++;
+      if(lane===laneEnds.length) laneEnds.push(r.end);
+      else laneEnds[lane]=r.end;
+
+      o.y=firstY+lane*rowGap;
+      maxLane=Math.max(maxLane,lane);
+    });
+
+  return maxLane+1;
+}
+
+function autoLayout(){
+  const all=[...rows,...points];
+  const groups={
+    persons:all.filter(o=>layoutKind(o)==='persons'),
+    reigns:all.filter(o=>layoutKind(o)==='reigns'),
+    books:all.filter(o=>layoutKind(o)==='books'),
+    events:all.filter(o=>layoutKind(o)==='events')
+  };
+
+  const top=54;
+  const labelToFirst=24;
+  const rowGap=40;
+  const sectionGap=48;
+
+  sectionY.persons=top;
+  let first=sectionY.persons+labelToFirst;
+  const personLanes=Math.max(1,assignLanes(groups.persons,first,rowGap));
+
+  sectionY.reigns=first+(personLanes-1)*rowGap+sectionGap;
+  first=sectionY.reigns+labelToFirst;
+  const reignLanes=Math.max(1,assignLanes(groups.reigns,first,rowGap));
+
+  sectionY.books=first+(reignLanes-1)*rowGap+sectionGap;
+  first=sectionY.books+labelToFirst;
+  const bookLanes=Math.max(1,assignLanes(groups.books,first,rowGap));
+
+  sectionY.events=first+(bookLanes-1)*rowGap+sectionGap;
+  first=sectionY.events+labelToFirst;
+  const eventLanes=Math.max(1,assignLanes(groups.events,first,rowGap));
+
+  sectionY.bottom=first+(eventLanes-1)*rowGap+46;
+}
+
+function clampVertical(){
+  autoLayout();
+
+  const maxOffset=0;
+  const contentBottom=Math.max(680,sectionY.bottom);
+  const viewport=wrap.clientHeight;
+  const bottomPadding=24;
+  const minOffset=Math.min(0,viewport-contentBottom-bottomPadding);
+
+  offsetY=Math.max(minOffset,Math.min(maxOffset,offsetY));
+}
+
+
+
+const DATA_SCHEMA_VERSION=3;
+const DELETED_BUILTINS_KEY='maFriseBiblique_deletedBuiltins_v1';
+const STORAGE_DATA_KEY='maFriseBiblique_data_v3';
+
+function inferEntityKind(item){
+  if(item.entityKind) return item.entityKind;
+  if(item.eventMode || item.year!==undefined) return 'event';
+  if((item.type||'').startsWith('Règne')) return 'reign';
+  if((item.type||'').startsWith('Livre biblique')) return 'book';
+  return 'person';
+}
+
+function migrateItem(item,index){
+  if(!item || typeof item!=='object') return null;
+  const x={...item};
+  x.id=x.id || ('mig_'+Date.now()+'_'+index+'_'+Math.random().toString(36).slice(2,7));
+  x.entityKind=inferEntityKind(x);
+  x.userCreated=true;
+  x.place=x.place||'';
+  x.ref=x.ref||'';
+  x.notes=x.notes||'';
+  x.image=x.image||'';
+  if(x.entityKind==='person'){
+    x.activities=Array.isArray(x.activities)?x.activities.map(a=>({
+      ...a,place:a.place||'',ref:a.ref||'',notes:a.notes||''
+    })):[];
+  }
+  return x;
+}
+
+function makeDataDocument(items){
+  return {
+    app:'Ma frise biblique',
+    schemaVersion:DATA_SCHEMA_VERSION,
+    appVersion:'3.0.1',
+    updatedAt:new Date().toISOString(),
+    timelineId:'family-main',
+    items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
+  };
+}
+
+const STORAGE_KEY='maFriseBiblique_userPersons_v1';
+const STORAGE_ITEMS_KEY='maFriseBiblique_userItems_v2';
+
+function loadUserPersons(){
+  try{
+    let saved=[];
+    const modern=localStorage.getItem(STORAGE_DATA_KEY);
+    if(modern){
+      const doc=JSON.parse(modern);
+      saved=Array.isArray(doc.items)?doc.items:[];
+    }else{
+      const raw=localStorage.getItem(STORAGE_ITEMS_KEY) || localStorage.getItem(STORAGE_KEY) || '[]';
+      const legacy=JSON.parse(raw);
+      saved=Array.isArray(legacy)?legacy:[];
+    }
+
+    saved.map(migrateItem).filter(Boolean).forEach(item=>{
+      let idx=rows.findIndex(x=>x.id===item.id);
+      if(idx>=0){
+        rows[idx]={...rows[idx],...item,userCreated:true};
+        return;
+      }
+      idx=points.findIndex(x=>x.id===item.id);
+      if(idx>=0){
+        points[idx]={...points[idx],...item,userCreated:true};
+        return;
+      }
+      // All imported/saved point events now join the main rows collection.
+      rows.push(item);
+    });
+
+    const deleted=new Set(JSON.parse(localStorage.getItem(DELETED_BUILTINS_KEY)||'[]'));
+    if(deleted.size){
+      rows=rows.filter(x=>!deleted.has(x.id));
+      for(let i=points.length-1;i>=0;i--){
+        if(deleted.has(points[i].id)) points.splice(i,1);
+      }
+    }
+  }catch(e){
+    console.warn('Chargement local impossible',e);
+  }
+}
+
+function persistUserPersons(){
+  const custom=rows.filter(r=>r.userCreated);
+  try{
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(custom));
+  }catch(e){
+    alert("La sauvegarde locale n’a pas pu être effectuée sur ce navigateur.");
+  }
+}
+
+
+const ACTIVITY_COLORS=['#0f766e','#7c3aed','#b45309','#be123c','#0369a1','#4d7c0f'];
+
+function activityColor(i){ return ACTIVITY_COLORS[i%ACTIVITY_COLORS.length]; }
+
+function renderDraftActivities(){
+  const box=document.getElementById('activityDraftList');
+  if(!box) return;
+  box.innerHTML='';
+  draftActivities.forEach((a,i)=>{
+    const d=document.createElement('div');
+    d.className='activityCard';
+    d.innerHTML='<strong>'+escapeHtml(a.label)+'</strong><br>'+formatYear(a.start)+' → '+formatYear(a.end)+
+      (a.place ? '<br>📍 '+escapeHtml(a.place) : '')+
+      (a.ref ? '<br>📖 '+escapeHtml(a.ref) : '')+
+      '<br><button type="button" onclick="removeDraftActivity('+i+')">🗑 Retirer</button>';
+    box.appendChild(d);
+  });
+}
+function escapeHtml(v){
+  return String(v||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function addDraftActivity(){
+  const label=document.getElementById('aLabel').value.trim();
+  const start=signedYear(document.getElementById('aStartYear').value,document.getElementById('aStartEra').value);
+  const end=signedYear(document.getElementById('aEndYear').value,document.getElementById('aEndEra').value);
+  if(!label){alert('Indique le nom de la fonction ou activité.');return;}
+  if(start===null||end===null){alert('Indique le début et la fin de cette période.');return;}
+  if(end<=start){alert('La fin de cette période doit être postérieure au début.');return;}
+  draftActivities.push({
+    label,start,end,
+    startCert:document.getElementById('aStartCert').value,
+    endCert:document.getElementById('aEndCert').value,
+    place:document.getElementById('aPlace').value.trim(),
+    ref:document.getElementById('aRef').value.trim()
+  });
+  ['aLabel','aStartYear','aEndYear','aPlace','aRef'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('aStartCert').value='exact';
+  document.getElementById('aEndCert').value='exact';
+  renderDraftActivities();
+}
+function removeDraftActivity(i){ draftActivities.splice(i,1); renderDraftActivities(); }
+
+function uncoveredPeriods(person){
+  if(!person.activities || !person.activities.length) return [{start:person.start,end:person.end}];
+  const ranges=person.activities.map(a=>({start:Math.max(person.start,a.start),end:Math.min(person.end,a.end)}))
+    .filter(a=>a.end>a.start).sort((a,b)=>a.start-b.start);
+  if(!ranges.length) return [{start:person.start,end:person.end}];
+  const merged=[];
+  ranges.forEach(r=>{
+    const last=merged[merged.length-1];
+    if(last && r.start<=last.end) last.end=Math.max(last.end,r.end);
+    else merged.push({...r});
+  });
+  const gaps=[]; let cursor=person.start;
+  merged.forEach(r=>{ if(r.start>cursor) gaps.push({start:cursor,end:r.start}); cursor=Math.max(cursor,r.end); });
+  if(cursor<person.end) gaps.push({start:cursor,end:person.end});
+  return gaps;
+}
+
+function openPersonForm(){
+  if(window.__V3_CONNECTED && !window.__V3_CAN_EDIT){ alert('Mode visiteur : modification non autorisée.'); return; }
+  removeEntityImage('p');
+  draftActivities=[];
+  renderDraftActivities();
+  document.getElementById('personForm').style.display='block';
+  document.getElementById('pName').focus();
+}
+
+function closePersonForm(){
+  document.getElementById('personForm').style.display='none';
+  draftActivities=[];
+  editingItemId=null;
+  document.querySelector('#personForm h2').textContent='👤 Ajouter un personnage';
+  document.querySelector('.saveBtn').textContent='✓ Ajouter';
+}
+
+
+const entityImages={p:'',e:'',r:'',b:''};
+
+function refreshEntityImage(prefix){
+  const box=document.getElementById(prefix+'ImagePreviewBox');
+  const img=document.getElementById(prefix+'ImagePreview');
+  if(!box||!img) return;
+  if(entityImages[prefix]){
+    img.src=entityImages[prefix];
+    box.style.display='block';
+  }else{
+    img.removeAttribute('src');
+    box.style.display='none';
+  }
+}
+
+function removeEntityImage(prefix){
+  entityImages[prefix]='';
+  const file=document.getElementById(prefix+'ImageFile');
+  if(file) file.value='';
+  refreshEntityImage(prefix);
+}
+
+function setEntityImage(prefix,dataUrl){
+  entityImages[prefix]=dataUrl||'';
+  const file=document.getElementById(prefix+'ImageFile');
+  if(file) file.value='';
+  refreshEntityImage(prefix);
+}
+
+function pickEntityImage(prefix,input){
+  const file=input.files && input.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){
+    alert('Choisis un fichier image.');
+    input.value='';
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=1200,maxH=800;
+      let w=img.width,h=img.height;
+      const scale=Math.min(1,maxW/w,maxH/h);
+      w=Math.max(1,Math.round(w*scale)); h=Math.max(1,Math.round(h*scale));
+      const c=document.createElement('canvas');
+      c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      try{
+        entityImages[prefix]=c.toDataURL('image/jpeg',0.78);
+      }catch(err){
+        entityImages[prefix]=reader.result;
+      }
+      refreshEntityImage(prefix);
+    };
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function toggleAddMenu(e){
+  if(e){e.preventDefault();e.stopPropagation();}
+  const menu=document.getElementById('addMenu');
+  if(menu) menu.classList.toggle('open');
+}
+function closeAddMenu(){
+  const menu=document.getElementById('addMenu');
+  if(menu) menu.classList.remove('open');
+}
+function chooseAdd(kind){
+  closeAddMenu();
+  if(kind==='person') openPersonForm();
+  else if(kind==='event') openEventForm();
+  else if(kind==='reign') openReignForm();
+  else if(kind==='book') openBookForm();
+}
+function setAddFabVisible(visible){
+  const fab=document.getElementById('addFab');
+  if(!fab) return;
+  fab.classList.toggle('hiddenForCard',!visible);
+  if(!visible) closeAddMenu();
+}
+document.addEventListener('pointerdown',(e)=>{
+  const fab=document.getElementById('addFab');
+  if(fab && !fab.contains(e.target)) closeAddMenu();
+});
+
+function signedYear(value,era){
+  const n=Math.abs(parseInt(value,10));
+  if(!Number.isFinite(n) || n<1) return null;
+  return era==='bce' ? -n : n;
+}
+
+function nextPersonY(){
+  const customCount=rows.filter(r=>r.userCreated).length;
+  return 86 + ((customCount+3)%6)*46;
+}
+
+function savePerson(){
+  const name=document.getElementById('pName').value.trim();
+  const start=signedYear(
+    document.getElementById('pStartYear').value,
+    document.getElementById('pStartEra').value
+  );
+  const end=signedYear(
+    document.getElementById('pEndYear').value,
+    document.getElementById('pEndEra').value
+  );
+
+  if(!name){
+    alert('Indique le nom du personnage.');
+    return;
+  }
+  if(start===null || end===null){
+    alert('Indique une année de début et une année de fin.');
+    return;
+  }
+  if(end<=start){
+    alert("La date de fin doit être postérieure à la date de début.");
+    return;
+  }
+
+  const startCert=document.getElementById('pStartCert').value;
+  const endCert=document.getElementById('pEndCert').value;
+  const role=document.getElementById('pRole').value;
+  const place=document.getElementById('pPlace').value.trim();
+  const refs=document.getElementById('pRefs').value.trim() || 'Aucune référence indiquée';
+  const notes=document.getElementById('pNotes').value.trim() || 'Aucune note';
+
+  const personData={
+    id: editingItemId || ('p_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)),
+    name:name,
+    type:role,
+    start:start,
+    end:end,
+    color:'#2563eb',
+    y:nextPersonY(),
+    place:place,
+    image:entityImages.p||'',
+    ref:refs,
+    notes:notes,
+    fadeStart:startCert!=='exact',
+    fadeEnd:endCert!=='exact',
+    startCert:startCert,
+    endCert:endCert,
+    userCreated:true,
+    entityKind:'person',
+    activities:draftActivities.map(a=>({...a}))
+  };
+
+  if(editingItemId){
+    const idx=rows.findIndex(r=>r.id===editingItemId);
+    if(idx>=0){
+      personData.y=rows[idx].y;
+      rows[idx]=personData;
+    }
+  }else{
+    rows.push(personData);
+  }
+
+  persistUserData();
+
+  // Centre automatiquement la frise sur le nouveau personnage.
+  centerYear=(start+end)/2;
+  pxPerYear=Math.max(1.2,Math.min(6,wrap.clientWidth/Math.max(80,(end-start)*2.4)));
+  offsetY=0;
+  clampVertical();
+
+  document.getElementById('pName').value='';
+  document.getElementById('pStartYear').value='';
+  document.getElementById('pEndYear').value='';
+  document.getElementById('pPlace').value='';
+  document.getElementById('pRefs').value='';
+  document.getElementById('pNotes').value='';
+  document.getElementById('pStartCert').value='exact';
+  document.getElementById('pEndCert').value='exact';
+  editingItemId=null;
+  document.querySelector('#personForm h2').textContent='👤 Ajouter un personnage';
+  document.querySelector('.saveBtn').textContent='✓ Ajouter';
+
+  removeEntityImage('p');
+  closePersonForm();
+  draw();
+}
+
+
+
+
+
+function nextBookY(){
+  return 474 + (rows.filter(r=>r.userCreated && r.entityKind==='book').length%4)*46;
+}
+
+function openBookForm(){
+  if(window.__V3_CONNECTED && !window.__V3_CAN_EDIT){ alert('Mode visiteur : modification non autorisée.'); return; }
+  editingBookId=null;
+  removeEntityImage('b');
+  document.querySelector('#bookForm h2').textContent='📘 Ajouter un livre biblique';
+  document.querySelector('.saveBookBtn').textContent='✓ Ajouter';
+  document.getElementById('bookForm').style.display='block';
+}
+
+function closeBookForm(){
+  document.getElementById('bookForm').style.display='none';
+  editingBookId=null;
+  document.querySelector('#bookForm h2').textContent='📘 Ajouter un livre biblique';
+  document.querySelector('.saveBookBtn').textContent='✓ Ajouter';
+}
+
+function saveBook(){
+  const name=document.getElementById('bName').value.trim();
+  const author=document.getElementById('bAuthor').value.trim();
+
+  const coverStart=signedYear(document.getElementById('bCoverStartYear').value,document.getElementById('bCoverStartEra').value);
+  const coverEnd=signedYear(document.getElementById('bCoverEndYear').value,document.getElementById('bCoverEndEra').value);
+  const writeStart=signedYear(document.getElementById('bWriteStartYear').value,document.getElementById('bWriteStartEra').value);
+  const writeEnd=signedYear(document.getElementById('bWriteEndYear').value,document.getElementById('bWriteEndEra').value);
+
+  if(!name){ alert('Indique le nom du livre.'); return; }
+  if(coverStart===null || coverEnd===null){
+    alert('Indique le début et la fin de la période historique couverte.');
+    return;
+  }
+  if(coverEnd<=coverStart){
+    alert('La fin de la période couverte doit être postérieure au début.');
+    return;
+  }
+
+  const hasWriteStart=writeStart!==null;
+  const hasWriteEnd=writeEnd!==null;
+  if(hasWriteStart!==hasWriteEnd){
+    alert('Pour la rédaction, indique soit les deux dates, soit aucune.');
+    return;
+  }
+  if(hasWriteStart && writeEnd<=writeStart){
+    alert('La fin de la période de rédaction doit être postérieure au début.');
+    return;
+  }
+
+  const cs=document.getElementById('bCoverStartCert').value;
+  const ce=document.getElementById('bCoverEndCert').value;
+  const ws=document.getElementById('bWriteStartCert').value;
+  const we=document.getElementById('bWriteEndCert').value;
+
+  const data={
+    id:editingBookId || ('b_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)),
+    name:'Livre de '+name,
+    bookName:name,
+    author:author,
+    type:'Livre biblique — période couverte',
+    start:coverStart,
+    end:coverEnd,
+    writeStart:hasWriteStart?writeStart:null,
+    writeEnd:hasWriteStart?writeEnd:null,
+    color:'#14b8a6',
+    y:nextBookY(),
+    place:document.getElementById('bPlace').value.trim(),
+    image:entityImages.b||'',
+    ref:document.getElementById('bRefs').value.trim() || 'Aucune référence indiquée',
+    notes:document.getElementById('bNotes').value.trim() || 'Aucune note',
+    startCert:cs,
+    endCert:ce,
+    writeStartCert:ws,
+    writeEndCert:we,
+    fadeStart:cs!=='exact',
+    fadeEnd:ce!=='exact',
+    userCreated:true,
+    entityKind:'book'
+  };
+
+  if(editingBookId){
+    const idx=rows.findIndex(r=>r.id===editingBookId);
+    if(idx>=0){ data.y=rows[idx].y; rows[idx]=data; }
+  }else{
+    rows.push(data);
+  }
+
+  persistUserData();
+  centerYear=(coverStart+coverEnd)/2;
+  pxPerYear=Math.max(1.2,Math.min(6,wrap.clientWidth/Math.max(80,(coverEnd-coverStart)*2.4)));
+  offsetY=0; clampVertical();
+
+  ['bName','bAuthor','bCoverStartYear','bCoverEndYear','bWriteStartYear','bWriteEndYear','bPlace','bRefs','bNotes']
+    .forEach(id=>document.getElementById(id).value='');
+  ['bCoverStartEra','bCoverEndEra','bWriteStartEra','bWriteEndEra'].forEach(id=>document.getElementById(id).value='bce');
+  ['bCoverStartCert','bCoverEndCert','bWriteStartCert','bWriteEndCert'].forEach(id=>document.getElementById(id).value='exact');
+
+  closeBookForm();
+  draw();
+}
+
+function editSelectedBook(){
+  if(!selectedItem) return;
+  editingBookId=selectedItem.id;
+  selectedItem.userCreated=true;
+  unmarkBuiltinDeleted(selectedItem);
+  document.querySelector('#bookForm h2').textContent='✏ Modifier le livre';
+  document.querySelector('.saveBookBtn').textContent='✓ Enregistrer';
+
+  document.getElementById('bName').value=selectedItem.bookName || selectedItem.name.replace(/^Livre de /,'');
+  document.getElementById('bAuthor').value=selectedItem.author||'';
+
+  document.getElementById('bCoverStartYear').value=Math.abs(selectedItem.start);
+  document.getElementById('bCoverStartEra').value=selectedItem.start<0?'bce':'ce';
+  document.getElementById('bCoverEndYear').value=Math.abs(selectedItem.end);
+  document.getElementById('bCoverEndEra').value=selectedItem.end<0?'bce':'ce';
+  document.getElementById('bCoverStartCert').value=selectedItem.startCert || (selectedItem.fadeStart?'approx':'exact');
+  document.getElementById('bCoverEndCert').value=selectedItem.endCert || (selectedItem.fadeEnd?'approx':'exact');
+
+  if(selectedItem.writeStart!==null && selectedItem.writeStart!==undefined){
+    document.getElementById('bWriteStartYear').value=Math.abs(selectedItem.writeStart);
+    document.getElementById('bWriteStartEra').value=selectedItem.writeStart<0?'bce':'ce';
+    document.getElementById('bWriteEndYear').value=Math.abs(selectedItem.writeEnd);
+    document.getElementById('bWriteEndEra').value=selectedItem.writeEnd<0?'bce':'ce';
+  }else{
+    document.getElementById('bWriteStartYear').value='';
+    document.getElementById('bWriteEndYear').value='';
+  }
+
+  document.getElementById('bWriteStartCert').value=selectedItem.writeStartCert||'exact';
+  document.getElementById('bWriteEndCert').value=selectedItem.writeEndCert||'exact';
+  document.getElementById('bPlace').value=selectedItem.place||'';
+  setEntityImage('b',selectedItem.image||'');
+  document.getElementById('bRefs').value=(selectedItem.ref && selectedItem.ref!=='Aucune référence indiquée')?selectedItem.ref:'';
+  document.getElementById('bNotes').value=(selectedItem.notes && selectedItem.notes!=='Aucune note')?selectedItem.notes:'';
+
+  closeInfo();
+  document.getElementById('bookForm').style.display='block';
+}
+
+function deleteSelectedBook(){ deleteSelectedAny(); }
+
+const REIGN_COLORS={
+  united:'#8b5cf6',
+  judah:'#2563eb',
+  ten:'#dc2626',
+  foreign:'#64748b'
+};
+
+function updateReignColor(){
+  const foreign=document.getElementById('rKingdom').value==='foreign';
+  document.getElementById('rForeignBlock').style.display=foreign?'block':'none';
+}
+
+function openReignForm(){
+  if(window.__V3_CONNECTED && !window.__V3_CAN_EDIT){ alert('Mode visiteur : modification non autorisée.'); return; }
+  editingReignId=null;
+  removeEntityImage('r');
+  document.querySelector('#reignForm h2').textContent='👑 Ajouter un règne';
+  document.querySelector('.saveReignBtn').textContent='✓ Ajouter';
+  document.getElementById('reignForm').style.display='block';
+  updateReignColor();
+}
+
+function closeReignForm(){
+  document.getElementById('reignForm').style.display='none';
+  editingReignId=null;
+  document.querySelector('#reignForm h2').textContent='👑 Ajouter un règne';
+  document.querySelector('.saveReignBtn').textContent='✓ Ajouter';
+}
+
+function reignTypeLabel(kind,power){
+  if(kind==='united') return 'Règne — Israël, royaume uni';
+  if(kind==='judah') return 'Règne — Juda';
+  if(kind==='ten') return 'Règne — royaume des dix tribus';
+  return 'Règne — '+(power||'souverain étranger');
+}
+
+function nextReignY(){
+  return 252 + (rows.filter(r=>r.userCreated && r.entityKind==='reign').length%4)*46;
+}
+
+function saveReign(){
+  const name=document.getElementById('rName').value.trim();
+  const kind=document.getElementById('rKingdom').value;
+  const power=document.getElementById('rPower').value.trim();
+  const start=signedYear(document.getElementById('rStartYear').value,document.getElementById('rStartEra').value);
+  const end=signedYear(document.getElementById('rEndYear').value,document.getElementById('rEndEra').value);
+  if(!name){ alert('Indique le nom du souverain.'); return; }
+  if(kind==='foreign' && !power){ alert('Indique la nation ou l’empire du souverain.'); return; }
+  if(start===null || end===null){ alert('Indique une année de début et une année de fin.'); return; }
+  if(end<=start){ alert('La date de fin doit être postérieure à la date de début.'); return; }
+
+  const startCert=document.getElementById('rStartCert').value;
+  const endCert=document.getElementById('rEndCert').value;
+  const data={
+    id:editingReignId || ('r_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)),
+    name:'Règne de '+name,
+    rulerName:name,
+    type:reignTypeLabel(kind,power),
+    kingdom:kind,
+    power:power,
+    start,end,
+    color:REIGN_COLORS[kind],
+    y:nextReignY(),
+    place:document.getElementById('rPlace').value.trim(),
+    image:entityImages.r||'',
+    ref:document.getElementById('rRefs').value.trim() || 'Aucune référence indiquée',
+    notes:document.getElementById('rNotes').value.trim() || 'Aucune note',
+    startCert,endCert,
+    fadeStart:startCert!=='exact',
+    fadeEnd:endCert!=='exact',
+    userCreated:true,
+    entityKind:'reign'
+  };
+  if(editingReignId){
+    const idx=rows.findIndex(r=>r.id===editingReignId);
+    if(idx>=0){ data.y=rows[idx].y; rows[idx]=data; }
+  }else rows.push(data);
+
+  persistUserData();
+  centerYear=(start+end)/2;
+  pxPerYear=Math.max(1.2,Math.min(6,wrap.clientWidth/Math.max(80,(end-start)*2.4)));
+  offsetY=0; clampVertical();
+
+  ['rName','rPower','rStartYear','rEndYear','rPlace','rRefs','rNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rKingdom').value='united';
+  document.getElementById('rStartEra').value='bce';
+  document.getElementById('rEndEra').value='bce';
+  document.getElementById('rStartCert').value='exact';
+  document.getElementById('rEndCert').value='exact';
+  removeEntityImage('r');
+  closeReignForm(); draw();
+}
+
+function editSelectedReign(){
+  if(!selectedItem) return;
+  editingReignId=selectedItem.id;
+  selectedItem.userCreated=true;
+  unmarkBuiltinDeleted(selectedItem);
+  document.querySelector('#reignForm h2').textContent='✏ Modifier le règne';
+  document.querySelector('.saveReignBtn').textContent='✓ Enregistrer';
+  document.getElementById('rName').value=selectedItem.rulerName || selectedItem.name.replace(/^Règne de /,'');
+  document.getElementById('rKingdom').value=selectedItem.kingdom || 'united';
+  document.getElementById('rPower').value=selectedItem.power||'';
+  document.getElementById('rStartYear').value=Math.abs(selectedItem.start);
+  document.getElementById('rStartEra').value=selectedItem.start<0?'bce':'ce';
+  document.getElementById('rEndYear').value=Math.abs(selectedItem.end);
+  document.getElementById('rEndEra').value=selectedItem.end<0?'bce':'ce';
+  document.getElementById('rStartCert').value=selectedItem.startCert || (selectedItem.fadeStart?'approx':'exact');
+  document.getElementById('rEndCert').value=selectedItem.endCert || (selectedItem.fadeEnd?'approx':'exact');
+  document.getElementById('rPlace').value=selectedItem.place||'';
+  setEntityImage('r',selectedItem.image||'');
+  document.getElementById('rRefs').value=(selectedItem.ref && selectedItem.ref!=='Aucune référence indiquée')?selectedItem.ref:'';
+  document.getElementById('rNotes').value=(selectedItem.notes && selectedItem.notes!=='Aucune note')?selectedItem.notes:'';
+  updateReignColor();
+  closeInfo();
+  document.getElementById('reignForm').style.display='block';
+}
+
+function deleteSelectedReign(){ deleteSelectedAny(); }
+
+function openEventForm(){
+  if(window.__V3_CONNECTED && !window.__V3_CAN_EDIT){ alert('Mode visiteur : modification non autorisée.'); return; }
+  editingEventId=null;
+  removeEntityImage('e');
+  document.querySelector('#eventForm h2').textContent='📍 Ajouter un événement';
+  document.querySelector('.saveEventBtn').textContent='✓ Ajouter';
+  document.getElementById('eventForm').style.display='block';
+  toggleEventMode();
+}
+
+function closeEventForm(){
+  document.getElementById('eventForm').style.display='none';
+  editingEventId=null;
+  document.querySelector('#eventForm h2').textContent='📍 Ajouter un événement';
+  document.querySelector('.saveEventBtn').textContent='✓ Ajouter';
+}
+
+function toggleEventMode(){
+  const mode=document.getElementById('eMode').value;
+  document.getElementById('eventEndBlock').style.display=mode==='period' ? 'block' : 'none';
+}
+
+function saveEvent(){
+  const name=document.getElementById('eName').value.trim();
+  const mode=document.getElementById('eMode').value;
+  const start=signedYear(document.getElementById('eStartYear').value,document.getElementById('eStartEra').value);
+  const startCert=document.getElementById('eStartCert').value;
+
+  if(!name || start===null){
+    alert("Indique au minimum le nom et la date de l'événement.");
+    return;
+  }
+
+  let end=null;
+  let endCert='exact';
+  if(mode==='period'){
+    end=signedYear(document.getElementById('eEndYear').value,document.getElementById('eEndEra').value);
+    endCert=document.getElementById('eEndCert').value;
+    if(end===null){
+      alert("Indique une date de fin pour cet événement.");
+      return;
+    }
+    if(end<=start){
+      alert("La date de fin doit être après la date de début.");
+      return;
+    }
+  }
+
+  const data={
+    id:editingEventId || ('e_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)),
+    name,
+    type:'Événement',
+    eventMode:mode,
+    year:mode==='point' ? start : undefined,
+    start:mode==='period' ? start : undefined,
+    end:mode==='period' ? end : undefined,
+    color:'#b45309',
+    y:560 + (rows.filter(r=>r.userCreated && r.entityKind==='event').length%4)*54,
+    ref:document.getElementById('eRefs').value.trim() || 'Aucune référence indiquée',
+    notes:document.getElementById('eNotes').value.trim() || 'Aucune note',
+    place:document.getElementById('ePlace').value.trim(),
+    image:entityImages.e||'',
+    startCert,
+    endCert,
+    fadeStart:startCert!=='exact',
+    fadeEnd:mode==='period' ? endCert!=='exact' : false,
+    userCreated:true,
+    entityKind:'event'
+  };
+
+  if(editingEventId){
+    const idx=rows.findIndex(r=>r.id===editingEventId);
+    if(idx>=0){
+      data.y=rows[idx].y;
+      rows[idx]=data;
+    }
+  }else{
+    rows.push(data);
+  }
+
+  persistUserData();
+
+  centerYear = mode==='point' ? start : (start+end)/2;
+  if(mode==='point') pxPerYear=Math.max(pxPerYear,2.3);
+  else pxPerYear=Math.max(1.2,Math.min(6,wrap.clientWidth/Math.max(80,(end-start)*2.4)));
+  offsetY=Math.min(0, wrap.clientHeight-(data.y+90));
+  clampVertical();
+
+  document.getElementById('eName').value='';
+  document.getElementById('eMode').value='point';
+  document.getElementById('eStartYear').value='';
+  document.getElementById('eStartEra').value='bce';
+  document.getElementById('eStartCert').value='exact';
+  document.getElementById('eEndYear').value='';
+  document.getElementById('eEndEra').value='bce';
+  document.getElementById('eEndCert').value='exact';
+  document.getElementById('ePlace').value='';
+  document.getElementById('eRefs').value='';
+  document.getElementById('eNotes').value='';
+
+  closeEventForm();
+  draw();
+}
+
+function editSelectedEvent(){
+  if(!selectedItem) return;
+  const pidx=points.findIndex(p=>p.id===selectedItem.id);
+  if(pidx>=0){
+    const moved={...points[pidx],userCreated:true};
+    points.splice(pidx,1);
+    rows.push(moved);
+    selectedItem=moved;
+  }
+  editingEventId=selectedItem.id;
+  selectedItem.userCreated=true;
+  unmarkBuiltinDeleted(selectedItem);
+  document.querySelector('#eventForm h2').textContent='✏ Modifier l’événement';
+  document.querySelector('.saveEventBtn').textContent='✓ Enregistrer';
+
+  document.getElementById('eName').value=selectedItem.name||'';
+  document.getElementById('eMode').value=selectedItem.eventMode || (selectedItem.year!==undefined ? 'point' : 'period');
+
+  const s = selectedItem.year!==undefined ? selectedItem.year : selectedItem.start;
+  document.getElementById('eStartYear').value=Math.abs(s);
+  document.getElementById('eStartEra').value=s<0?'bce':'ce';
+  document.getElementById('eStartCert').value=selectedItem.startCert || (selectedItem.fadeStart?'approx':'exact');
+
+  if(document.getElementById('eMode').value==='period'){
+    document.getElementById('eEndYear').value=Math.abs(selectedItem.end);
+    document.getElementById('eEndEra').value=selectedItem.end<0?'bce':'ce';
+    document.getElementById('eEndCert').value=selectedItem.endCert || (selectedItem.fadeEnd?'approx':'exact');
+  }
+
+  document.getElementById('ePlace').value=selectedItem.place||'';
+  setEntityImage('e',selectedItem.image||'');
+  document.getElementById('eRefs').value=(selectedItem.ref && selectedItem.ref!=='Aucune référence indiquée') ? selectedItem.ref : '';
+  document.getElementById('eNotes').value=(selectedItem.notes && selectedItem.notes!=='Aucune note') ? selectedItem.notes : '';
+
+  toggleEventMode();
+  closeInfo();
+  document.getElementById('eventForm').style.display='block';
+}
+
+function deleteSelectedEvent(){ deleteSelectedAny(); }
+
+function persistUserData(){
+  const rowItems=rows.filter(r=>r.userCreated);
+  const pointItems=points.filter(r=>r.userCreated);
+  const seen=new Set();
+  const items=[...rowItems,...pointItems].filter(x=>{
+    if(!x || !x.id || seen.has(x.id)) return false;
+    seen.add(x.id); return true;
+  });
+  try{
+    localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify(makeDataDocument(items)));
+    localStorage.setItem(STORAGE_ITEMS_KEY,JSON.stringify(items));
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(items.filter(r=>r.entityKind==='person' || !r.entityKind)));
+  }catch(e){
+    alert("La sauvegarde locale n’a pas pu être effectuée. Les images peuvent prendre beaucoup de place : pense à exporter une sauvegarde.");
+  }
+  if(typeof window.v3QueueCloudSave==='function') window.v3QueueCloudSave();
+}
+
+
+function unmarkBuiltinDeleted(o){
+  if(!o || !o.builtIn || !o.id) return;
+  try{
+    const ids=new Set(JSON.parse(localStorage.getItem(DELETED_BUILTINS_KEY)||'[]'));
+    if(ids.delete(o.id)) localStorage.setItem(DELETED_BUILTINS_KEY,JSON.stringify([...ids]));
+  }catch(e){}
+}
+function markBuiltinDeleted(o){
+  if(!o || !o.builtIn || !o.id) return;
+  try{
+    const ids=new Set(JSON.parse(localStorage.getItem(DELETED_BUILTINS_KEY)||'[]'));
+    ids.add(o.id);
+    localStorage.setItem(DELETED_BUILTINS_KEY,JSON.stringify([...ids]));
+  }catch(e){}
+}
+
+function deleteSelectedAny(){
+  if(window.__V3_CONNECTED && !window.__V3_CAN_EDIT){ alert('Mode visiteur : suppression non autorisée.'); return; }
+  if(!selectedItem) return;
+  const doomed=selectedItem;
+  if(!confirm('Supprimer définitivement « '+(doomed.name||'cet élément')+' » ?')) return;
+  markBuiltinDeleted(doomed);
+  rows=rows.filter(r=>r.id!==doomed.id);
+  for(let i=points.length-1;i>=0;i--){
+    if(points[i].id===doomed.id) points.splice(i,1);
+  }
+  persistUserData();
+  closeQuickCard();
+  draw();
+}
+
+function exportTimeline(){
+  const exportItems=[...rows.filter(r=>r.userCreated),...points.filter(r=>r.userCreated)];
+  const exportSeen=new Set();
+  const data=makeDataDocument(exportItems.filter(x=>x.id&&!exportSeen.has(x.id)&&exportSeen.add(x.id)));
+  data.exportedAt=new Date().toISOString();
+
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='ma-frise-biblique-sauvegarde.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function importTimeline(event){
+  if(window.__V3_CONNECTED && !window.__V3_CAN_EDIT){ alert('Mode visiteur : import non autorisé.'); event.target.value=''; return; }
+  const file=event.target.files && event.target.files[0];
+  if(!file) return;
+
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      let imported;
+      if(Array.isArray(data)) imported=data;
+      else if(Array.isArray(data.items)) imported=data.items;
+      else {
+        imported=[];
+        if(Array.isArray(data.persons)) imported.push(...data.persons.map(x=>({...x,entityKind:x.entityKind||'person'})));
+        if(Array.isArray(data.events)) imported.push(...data.events.map(x=>({...x,entityKind:'event'})));
+        if(Array.isArray(data.reigns)) imported.push(...data.reigns.map(x=>({...x,entityKind:'reign'})));
+        if(Array.isArray(data.books)) imported.push(...data.books.map(x=>({...x,entityKind:'book'})));
+      }
+
+      if(!Array.isArray(imported)){
+        alert("Ce fichier n'est pas une sauvegarde valide.");
+        event.target.value='';
+        return;
+      }
+
+      const existingIds=new Set(rows.filter(r=>r.userCreated).map(r=>r.id));
+      let added=0, replaced=0;
+
+      imported.forEach((p,index)=>{
+        p=migrateItem(p,index);
+        if(!p || !p.name) return;
+        const isPointEvent=(p.entityKind==='event' || p.eventMode==='point') && p.year!==undefined;
+        const isRange=p.start!==undefined && p.end!==undefined;
+        if(!isPointEvent && !isRange) return;
+
+        const clean={
+          ...p,
+          id:p.id || ('imp_'+Date.now()+'_'+index+'_'+Math.random().toString(36).slice(2,7)),
+          userCreated:true,
+          color:p.color || (p.entityKind==='book' ? '#14b8a6' : (p.entityKind==='reign' ? (REIGN_COLORS[p.kingdom]||'#8b5cf6') : ((p.entityKind==='event' || p.eventMode) ? '#b45309' : '#2563eb'))),
+          y:typeof p.y==='number' ? p.y : (p.entityKind==='book' ? nextBookY() : (p.entityKind==='reign' ? nextReignY() : ((p.entityKind==='event' || p.eventMode) ? 560 : nextPersonY())))
+        };
+
+        const idx=rows.findIndex(r=>r.userCreated && r.id===clean.id);
+        if(idx>=0){
+          rows[idx]=clean;
+          replaced++;
+        }else{
+          rows.push(clean);
+          existingIds.add(clean.id);
+          added++;
+        }
+      });
+
+      persistUserData();
+      draw();
+      alert('Import terminé : '+added+' ajouté(s), '+replaced+' mis à jour.');
+    }catch(e){
+      alert("Impossible de lire ce fichier.");
+    }
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function editSelectedPerson(){
+  if(!selectedItem) return;
+  editingItemId=selectedItem.id;
+  selectedItem.userCreated=true;
+  unmarkBuiltinDeleted(selectedItem);
+  document.querySelector('#personForm h2').textContent='✏ Modifier le personnage';
+  document.querySelector('.saveBtn').textContent='✓ Enregistrer';
+
+  document.getElementById('pName').value=selectedItem.name||'';
+  document.getElementById('pRole').value=selectedItem.type||'Personnage';
+
+  document.getElementById('pStartYear').value=Math.abs(selectedItem.start);
+  document.getElementById('pStartEra').value=selectedItem.start<0?'bce':'ce';
+  document.getElementById('pStartCert').value=selectedItem.startCert || (selectedItem.fadeStart?'approx':'exact');
+
+  document.getElementById('pEndYear').value=Math.abs(selectedItem.end);
+  document.getElementById('pEndEra').value=selectedItem.end<0?'bce':'ce';
+  document.getElementById('pEndCert').value=selectedItem.endCert || (selectedItem.fadeEnd?'approx':'exact');
+
+  document.getElementById('pPlace').value=selectedItem.place||'';
+  setEntityImage('p',selectedItem.image||'');
+  document.getElementById('pRefs').value=(selectedItem.ref && selectedItem.ref!=='Aucune référence indiquée') ? selectedItem.ref : '';
+  document.getElementById('pNotes').value=(selectedItem.notes && selectedItem.notes!=='Aucune note') ? selectedItem.notes : '';
+
+      info.style.display='none';
+  document.getElementById('personForm').style.display='block';
+}
+
+function deleteSelectedPerson(){ deleteSelectedAny(); }
+
+function resize(){
+  const dpr=devicePixelRatio||1;
+  const r=wrap.getBoundingClientRect();
+  canvas.width=Math.floor(r.width*dpr);
+  canvas.height=Math.floor(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  clampVertical();
+  draw();
+}
+addEventListener('resize',resize);
+
+function niceStep(){
+  if(pxPerYear>8) return 10;
+  if(pxPerYear>4) return 25;
+  if(pxPerYear>2) return 50;
+  if(pxPerYear>1) return 100;
+  if(pxPerYear>.5) return 200;
+  return 500;
+}
+
+function draw(){
+  autoLayout();
+  rows.forEach(o=>{delete o.hit;});
+  points.forEach(o=>{delete o.hit;});
+  const w=wrap.clientWidth,h=wrap.clientHeight;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,w,h);
+
+  const step=niceStep();
+  const minorStep = step>=100 ? step/5 : step>=50 ? 10 : step>=20 ? 5 : step>=10 ? 2 : 1;
+  const leftYear=xToYear(0), rightYear=xToYear(w);
+  const start=Math.floor(leftYear/minorStep)*minorStep-minorStep;
+  const end=Math.ceil(rightYear/minorStep)*minorStep+minorStep;
+
+  // Subtle minor grid
+  for(let y=start;y<=end;y+=minorStep){
+    if(Math.abs((y/step)-Math.round(y/step))<0.001) continue;
+    const x=yearToX(y);
+    ctx.strokeStyle='rgba(203,213,225,.38)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,34);ctx.lineTo(x,h);ctx.stroke();
+  }
+
+  // Major grid + labels
+  ctx.font='700 12px system-ui';
+  ctx.textAlign='center';
+  const majorStart=Math.floor(leftYear/step)*step-step;
+  const majorEnd=Math.ceil(rightYear/step)*step+step;
+  for(let y=majorStart;y<=majorEnd;y+=step){
+    const x=yearToX(y);
+    ctx.strokeStyle='#cbd5e1';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,32);ctx.lineTo(x,h);ctx.stroke();
+    ctx.fillStyle='#475569';
+    ctx.fillText(formatYear(y),x,21);
+    ctx.fillStyle='#94a3b8';
+    ctx.fillRect(x-1,27,2,6);
+  }
+
+  // Section separators for easier reading
+  [sectionY.reigns-22,sectionY.books-22,sectionY.events-22].forEach(base=>{
+    const yy=base+offsetY;
+    if(yy>35&&yy<h){
+      ctx.strokeStyle='rgba(148,163,184,.20)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(8,yy);ctx.lineTo(w-8,yy);ctx.stroke();
+    }
+  });
+
+  drawSectionLabel('PERSONNAGES',sectionY.persons);
+  drawSectionLabel('RÈGNES',sectionY.reigns);
+  drawSectionLabel('PROPHÈTES / LIVRES',sectionY.books);
+  drawSectionLabel('ÉVÉNEMENTS',sectionY.events);
+
+  rows.forEach(o=>{
+    if(o.entityKind==='event' && o.eventMode==='point') drawPoint(o);
+    else drawBar(o);
+  });
+  points.forEach(drawPoint);
+}
+
+function drawSectionLabel(text,y){
+  const yy=y+offsetY;
+  if(yy<-20||yy>wrap.clientHeight+20) return;
+  ctx.font='800 10px system-ui';
+  ctx.textAlign='left';
+  const tw=ctx.measureText(text).width;
+  ctx.fillStyle='rgba(248,250,252,.92)';
+  ctx.beginPath();ctx.roundRect(7,yy-13,tw+12,18,6);ctx.fill();
+  ctx.fillStyle='#64748b';
+  ctx.fillText(text,13,yy);
+}
+
+
+function certaintyEdgeStyle(c,isStart){
+  if(c==='unknown') return 'strong';
+  if(c==='approx') return 'soft';
+  if(c==='before') return isStart ? 'strong' : 'soft';
+  if(c==='after') return isStart ? 'soft' : 'strong';
+  return 'none';
+}
+
+function makeBarGradient(color,startCert,endCert){
+  const left=certaintyEdgeStyle(startCert,true);
+  const right=certaintyEdgeStyle(endCert,false);
+  if(left==='none' && right==='none') return color;
+
+  const grad=ctx.createLinearGradient(0,0,1,0);
+  // This helper is replaced by a width-aware gradient in drawBar.
+  return {color,left,right};
+}
+
+function certaintyText(c,year){
+  if(c==='before') return 'avant '+formatYear(year);
+  if(c==='after') return 'après '+formatYear(year);
+  if(c==='approx') return 'vers '+formatYear(year);
+  if(c==='unknown') return 'date incertaine';
+  return formatYear(year);
+}
+
+function drawBar(r){
+  const x1=yearToX(r.start), x2=yearToX(r.end);
+  const y=r.y+offsetY, hh=28;
+  if(y>wrap.clientHeight+40 || y<-50 || x2<-100 || x1>wrap.clientWidth+100) return;
+
+  const left=Math.min(x1,x2), right=Math.max(x1,x2);
+  const width=Math.max(16,right-left);
+  const grad=ctx.createLinearGradient(left,y,right,y);
+  if(r.fadeStart){
+    grad.addColorStop(0,'rgba(255,255,255,0)');
+    grad.addColorStop(.14,r.color);
+  } else grad.addColorStop(0,r.color);
+  if(r.fadeEnd){
+    grad.addColorStop(.86,r.color);
+    grad.addColorStop(1,'rgba(255,255,255,0)');
+  } else grad.addColorStop(1,r.color);
+
+  // soft shadow makes bars easier to distinguish without adding clutter
+  ctx.save();
+  ctx.shadowColor='rgba(15,23,42,.12)';
+  ctx.shadowBlur=5;ctx.shadowOffsetY=2;
+  ctx.fillStyle=grad;
+  ctx.beginPath();ctx.roundRect(left,y,width,hh,8);ctx.fill();
+  ctx.restore();
+
+  // Fine outline by type
+  ctx.strokeStyle='rgba(15,23,42,.12)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.roundRect(left+.5,y+.5,Math.max(15,width-1),hh-1,8);ctx.stroke();
+
+  ctx.fillStyle='#0f172a';
+  ctx.textAlign='left';
+  ctx.font='750 13px system-ui';
+  const labelX=Math.max(left+8,8);
+  if(labelX<wrap.clientWidth-80) ctx.fillText(r.name,labelX,y+19);
+
+  r.hit={x1:left,y1:y,x2:right,y2:y+hh};
+}
+
+function drawPoint(p){
+  const x=yearToX(p.year), y=p.y+offsetY;
+  if(x<-120||x>wrap.clientWidth+120||y<0||y>wrap.clientHeight) return;
+
+  // Event marker: slim stem + flag-like diamond, clearer at a glance.
+  ctx.strokeStyle=p.color;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x,y-16);ctx.lineTo(x,y+16);ctx.stroke();
+
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(Math.PI/4);
+  ctx.fillStyle=p.color;
+  ctx.shadowColor='rgba(15,23,42,.16)';ctx.shadowBlur=4;ctx.shadowOffsetY=1;
+  ctx.fillRect(-5,-5,10,10);
+  ctx.restore();
+
+  ctx.fillStyle='#0f172a';
+  ctx.textAlign='left';
+  ctx.font='750 13px system-ui';
+  ctx.fillText(p.name,x+11,y+4);
+
+  p.hit={x1:x-11,y1:y-21,x2:x+190,y2:y+21};
+}
+
+let pointers=new Map();
+let pinchStartDist=0, pinchStartScale=0, pinchAnchorYear=0, pinchMidX=0;
+let downPoint=null, moved=false;
+
+wrap.addEventListener('pointerdown',e=>{
+  wrap.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===1){
+    downPoint={x:e.clientX,y:e.clientY};
+    moved=false;
+  }
+  if(pointers.size===2){
+    const a=[...pointers.values()][0], b=[...pointers.values()][1];
+    pinchStartDist=Math.hypot(a.x-b.x,a.y-b.y);
+    pinchStartScale=pxPerYear;
+    pinchMidX=(a.x+b.x)/2-wrap.getBoundingClientRect().left;
+    pinchAnchorYear=xToYear(pinchMidX);
+  }
+});
+
+wrap.addEventListener('pointermove',e=>{
+  if(!pointers.has(e.pointerId)) return;
+  const prev=pointers.get(e.pointerId);
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const arr=[...pointers.values()];
+
+  if(arr.length===1){
+    const dx=e.clientX-prev.x, dy=e.clientY-prev.y;
+    centerYear -= dx/pxPerYear;
+    offsetY += dy;
+    clampVertical();
+    if(Math.abs(dx)+Math.abs(dy)>4) moved=true;
+    draw();
+  }else if(arr.length>=2){
+    const a=arr[0],b=arr[1];
+    const d=Math.hypot(a.x-b.x,a.y-b.y);
+    const ratio=d/pinchStartDist;
+    pxPerYear=Math.max(.25,Math.min(14,pinchStartScale*ratio));
+
+    // keep the year under the original pinch midpoint stable
+    centerYear = pinchAnchorYear - (pinchMidX-wrap.clientWidth/2)/pxPerYear;
+    moved=true;
+    draw();
+  }
+});
+
+function pointerEnd(e){
+  if(info.contains(e.target) || fullCardEl.contains(e.target)){
+    pointers.delete(e.pointerId);
+    if(pointers.size===0) downPoint=null;
+    return;
+  }
+  pointers.delete(e.pointerId);
+  if(pointers.size<2){pinchStartDist=0}
+  if(!moved && downPoint){
+    hitTest(e.clientX,e.clientY);
+  }
+  if(pointers.size===0) downPoint=null;
+}
+wrap.addEventListener('pointerup',pointerEnd);
+wrap.addEventListener('pointercancel',pointerEnd);
+
+
+function closeInfo(){
+  selectedItem=null;
+  info.style.display='none';
+  info.classList.remove('show');
+  setAddFabVisible(true);
+}
+
+function quickKindLabel(o){
+  const t=String(o.type||'');
+  if(o.entityKind==='event'||o.year!==undefined) return 'Événement';
+  if(o.entityKind==='book'||t.startsWith('Livre')) return 'Livre biblique';
+  if(o.entityKind==='reign'||t.startsWith('Règne')) return 'Règne';
+  return 'Personnage';
+}
+function quickDatesLabel(o){
+  if(o.year!==undefined) return certaintyText(o.certainty||o.dateCert||'exact',o.year);
+  if(o.start!==undefined&&o.end!==undefined){
+    const sc=o.startCert||o.startCertainty||(o.fadeStart?'approx':'exact');
+    const ec=o.endCert||o.endCertainty||(o.fadeEnd?'approx':'exact');
+    return certaintyText(sc,o.start)+' → '+certaintyText(ec,o.end);
+  }
+  return '';
+}
+
+function openFullCard(o){
+  if(!o) return;
+  const card=document.getElementById('fullCard');
+  const content=document.getElementById('fullContent');
+  const kind=quickKindLabel(o);
+
+  document.getElementById('fullTopTitle').textContent=o.name||'Fiche';
+  document.getElementById('fullBadge').textContent=kind;
+  document.getElementById('fullName').textContent=o.name||'';
+  document.getElementById('fullDates').textContent=quickDatesLabel(o);
+
+  let html='';
+  if(o.image){
+    html+='<div class="fullImageWrap"><img src="'+o.image+'" alt="'+escapeHtml(o.name||'Illustration')+'" loading="lazy"></div>';
+  }
+  if(o.place){
+    html+='<section class="fullSection"><h3>📍 Lieu</h3><p>'+escapeHtml(o.place)+'</p></section>';
+  }
+
+  if(o.entityKind==='person' && Array.isArray(o.activities) && o.activities.length){
+    html+='<section class="fullSection"><h3>🧩 Périodes / fonctions</h3>';
+    o.activities.forEach(a=>{
+      html+='<div class="fullActivity"><strong>'+escapeHtml(a.label)+'</strong>'+
+        '<small>'+escapeHtml(formatYear(a.start)+' → '+formatYear(a.end))+
+        (a.place?' • 📍 '+escapeHtml(a.place):'')+
+        (a.ref?' • 📖 '+escapeHtml(a.ref):'')+'</small></div>';
+    });
+    html+='</section>';
+  }
+
+  if(o.entityKind==='book' && o.author){
+    html+='<section class="fullSection"><h3>✍️ Rédaction</h3><p><strong>Auteur / rédacteur :</strong> '+escapeHtml(o.author)+'</p></section>';
+  }
+
+  if(o.ref && o.ref!=='Aucune référence indiquée'){
+    html+='<section class="fullSection"><h3>📖 Références</h3><p>'+escapeHtml(o.ref)+'</p></section>';
+  }
+  if(o.notes && o.notes!=='Aucune note'){
+    html+='<section class="fullSection"><h3>📝 Notes</h3><p>'+escapeHtml(o.notes)+'</p></section>';
+  }
+
+  if(!html){
+    html='<section class="fullSection"><h3>Informations</h3><p>Aucune information supplémentaire pour le moment.</p></section>';
+  }
+
+  if(isEditableItem(o)){
+    html+='<section class="fullSection"><div class="fullActions">'+
+      '<button id="fullEdit" class="fullEdit" type="button">✏️ Modifier</button>'+
+      '<button id="fullDelete" class="fullDelete" type="button">🗑 Supprimer</button>'+
+      '</div></section>';
+  }
+
+  content.innerHTML=html;
+  card.style.display='block';
+  card.scrollTop=0;
+  setAddFabVisible(false);
+
+  const edit=document.getElementById('fullEdit');
+  const del=document.getElementById('fullDelete');
+  if(edit) edit.onclick=()=>{
+    card.style.display='none'; selectedItem=o;
+    if(o.entityKind==='event') editSelectedEvent();
+    else if(o.entityKind==='reign') editSelectedReign();
+    else if(o.entityKind==='book') editSelectedBook();
+    else editSelectedPerson();
+  };
+  if(del) del.onclick=()=>{
+    card.style.display='none'; selectedItem=o;
+    if(o.entityKind==='event') deleteSelectedEvent();
+    else if(o.entityKind==='reign') deleteSelectedReign();
+    else if(o.entityKind==='book') deleteSelectedBook();
+    else deleteSelectedPerson();
+  };
+}
+
+document.getElementById('fullBack').addEventListener('click',()=>{
+  document.getElementById('fullCard').style.display='none';
+  setAddFabVisible(true);
+});
+
+
+function isEditableItem(o){
+  if(!o) return false;
+  if(window.__V3_CONNECTED && !window.__V3_CAN_EDIT) return false;
+  return true;
+}
+function renderQuickCard(o){
+  const info=document.getElementById('info');
+  if(!info||!o) return;
+
+  const kind=quickKindLabel(o);
+  const color=o.color||'#2563eb';
+  const place=o.place||'';
+  const refs=(o.ref&&o.ref!=='Aucune référence indiquée')?o.ref:'';
+  const notes=(o.notes&&o.notes!=='Aucune note')?o.notes:'';
+
+  let activities='';
+  if(o.entityKind==='person'&&Array.isArray(o.activities)&&o.activities.length){
+    activities=o.activities.map(a=>'• '+a.label+' : '+formatYear(a.start)+' → '+formatYear(a.end)+(a.place?' — 📍 '+a.place:'')).join('\n');
+  }
+
+  const bodyText=notes || activities;
+  let meta='';
+  if(place) meta+='<div class="quickMetaRow"><span class="quickMetaIcon">📍</span><span><strong>Lieu</strong><br>'+escapeHtml(place)+'</span></div>';
+  if(refs) meta+='<div class="quickMetaRow"><span class="quickMetaIcon">📖</span><span><strong>Références</strong><br>'+escapeHtml(refs)+'</span></div>';
+  if(activities && notes) meta+='<div class="quickMetaRow"><span class="quickMetaIcon">🧩</span><span><strong>Périodes / fonctions</strong><br>'+escapeHtml(activities).replace(/\n/g,'<br>')+'</span></div>';
+
+  const canEdit=isEditableItem(o);
+  info.innerHTML=
+    '<div class="quickHead">'+
+      '<span class="quickDot" style="background:'+color+'"></span>'+
+      '<div><div class="quickTitle">'+escapeHtml(o.name||'')+'</div><div class="quickType">'+escapeHtml(kind)+'</div></div>'+
+      '<button class="quickClose" type="button" aria-label="Fermer">×</button>'+
+    '</div>'+
+    '<div class="quickDates">'+escapeHtml(quickDatesLabel(o))+'</div>'+
+
+    (bodyText?'<div class="quickBody">'+escapeHtml(bodyText)+'</div>':'')+
+    (meta?'<div class="quickMeta">'+meta+'</div>':'')+
+    '<div class="quickActions"><button id="quickFull" type="button">📖 Fiche complète</button>'+
+    (canEdit?'<button id="quickEdit" type="button">✏️ Modifier</button><button id="quickDelete" class="danger" type="button">🗑 Supprimer</button>':'')+
+    '</div>';
+
+  info.querySelector('.quickClose').onclick=(e)=>runQuickAction(e,()=>closeInfo());
+
+  const fb=document.getElementById('quickFull');
+  if(fb) fb.onclick=(e)=>runQuickAction(e,()=>{
+    selectedItem=o;
+    openFullCard(o);
+  });
+
+  if(canEdit){
+    const eb=document.getElementById('quickEdit');
+    const db=document.getElementById('quickDelete');
+    if(eb) eb.onclick=(e)=>runQuickAction(e,()=>{
+      selectedItem=o;
+      if(o.entityKind==='event') editSelectedEvent();
+      else if(o.entityKind==='reign') editSelectedReign();
+      else if(o.entityKind==='book') editSelectedBook();
+      else editSelectedPerson();
+    });
+    if(db) db.onclick=(e)=>runQuickAction(e,()=>{
+      selectedItem=o;
+      if(o.entityKind==='event') deleteSelectedEvent();
+      else if(o.entityKind==='reign') deleteSelectedReign();
+      else if(o.entityKind==='book') deleteSelectedBook();
+      else deleteSelectedPerson();
+    });
+  }
+  info.style.display='block';
+  info.classList.add('show');
+  setAddFabVisible(false);
+}
+function closeQuickCard(){
+  const info=document.getElementById('info');
+  if(info){
+    info.classList.remove('show');
+    info.style.display='none';
+  }
+  selectedItem=null;
+  setAddFabVisible(true);
+}
+
+function hitTest(clientX,clientY){
+  const rect=wrap.getBoundingClientRect();
+  const x=clientX-rect.left, y=clientY-rect.top;
+
+  // Same order as the drawing, but reversed: the visually topmost item wins.
+  const drawn=[];
+  rows.forEach(o=>{
+    if(o.entityKind==='event' && o.eventMode==='point') drawn.push(o);
+    else drawn.push(o);
+  });
+  points.forEach(o=>drawn.push(o));
+
+  for(let i=drawn.length-1;i>=0;i--){
+    const o=drawn[i], h=o.hit;
+    if(!h) continue;
+    if(x>=h.x1 && x<=h.x2 && y>=h.y1 && y<=h.y2){
+      selectedItem=o;
+      renderQuickCard(o);
+      return o;
+    }
+  }
+  closeQuickCard();
+  return null;
+}
+
+function resetView(){
+  centerYear=-1000;pxPerYear=2.3;offsetY=0;clampVertical();closeInfo();draw();
+}
+function focusBiblical(){
+  centerYear=-1000;pxPerYear=3.2;offsetY=0;clampVertical();closeInfo();draw();
+}
+
+
+function normalizeSearchText(v){
+  return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+let searchedItem=null;
+
+function selectedSearchKinds(){
+  const active = new Set(
+    [...document.querySelectorAll('.filterChip.active')].map(b=>b.dataset.kind)
+  );
+  return {
+    person:active.has('person'),
+    event:active.has('event'),
+    date:active.has('date'),
+    book:active.has('book'),
+    reign:active.has('reign'),
+    place:active.has('place')
+  };
+}
+
+function itemSearchKind(o){
+  if(o.entityKind==='person') return 'person';
+  if(o.entityKind==='event' || o.year!==undefined) return 'event';
+  if(o.entityKind==='book' || String(o.type||'').startsWith('Livre biblique')) return 'book';
+  if(o.entityKind==='reign' || String(o.type||'').startsWith('Règne')) return 'reign';
+  if(!o.entityKind) return 'person';
+  return '';
+}
+
+function kindLabel(k){
+  return ({person:'👤 Personnage',event:'⚡ Événement',book:'📖 Livre',reign:'👑 Règne'})[k]||k;
+}
+
+function showSearchItem(o){
+  searchedItem=o;
+  const box=document.getElementById('searchResults');
+  box.style.display='none';
+  document.getElementById('personSearch').blur();
+
+  const targetYear=o.year!==undefined ? o.year :
+    (o.start!==undefined && o.end!==undefined ? (o.start+o.end)/2 : centerYear);
+
+  centerYear=targetYear;
+  if(o.start!==undefined && o.end!==undefined){
+    const span=Math.max(20,o.end-o.start);
+    pxPerYear=Math.max(1.2,Math.min(6,wrap.clientWidth/(span*1.8)));
+  }else{
+    pxPerYear=Math.max(pxPerYear,3);
+  }
+  offsetY=0;
+  clampVertical();
+  draw();
+
+  requestAnimationFrame(()=>{
+    if(o.hit){
+      const rect=wrap.getBoundingClientRect();
+      hitTest(rect.left+(o.hit.x1+o.hit.x2)/2, rect.top+(o.hit.y1+o.hit.y2)/2);
+    }
+  });
+}
+
+function goToSearchDate(year){
+  searchedItem=null;
+  centerYear=year;
+  pxPerYear=Math.max(pxPerYear,3.5);
+  offsetY=0;
+  clampVertical();
+  draw();
+  document.getElementById('searchResults').style.display='none';
+  document.getElementById('personSearch').blur();
+}
+
+function parseSearchDate(raw){
+  const txt=normalizeSearchText(raw).replace(/\s+/g,' ');
+  const m=txt.match(/(\d{1,4})/);
+  if(!m) return null;
+  let y=parseInt(m[1],10);
+  const isBCE=/av|avant|a\.?v\.?|bce|aec/.test(txt);
+  const isCE=/de n|apres|ap\.?|ce|ec/.test(txt);
+  if(isBCE) y=-y;
+  else if(isCE) y=y;
+  else y=-y; // Bible-study default for a bare historical year.
+  return y;
+}
+
+function runPersonSearch(){
+  const raw=document.getElementById('personSearch').value;
+  const q=normalizeSearchText(raw);
+  const box=document.getElementById('searchResults');
+  const kinds=selectedSearchKinds();
+  box.innerHTML='';
+
+  if(!q){ box.style.display='none'; return; }
+
+  const candidates=[...rows,...points].filter(o=>{
+    const k=itemSearchKind(o);
+    const activityPlaces=Array.isArray(o.activities)?o.activities.map(a=>a.place||'').join(' '):'';
+    const activityNames=Array.isArray(o.activities)?o.activities.map(a=>a.label||'').join(' '):'';
+    const placeMatch=kinds.place && normalizeSearchText((o.place||'')+' '+activityPlaces).includes(q);
+    const kindMatch=k && kinds[k];
+    if(!kindMatch && !placeMatch) return false;
+    const hay=normalizeSearchText([o.name,o.type,o.place,o.ref,activityNames,activityPlaces].join(' '));
+    return hay.includes(q);
+  });
+
+  const dateYear=kinds.date ? parseSearchDate(raw) : null;
+
+  if(candidates.length===1 && dateYear===null){
+    showSearchItem(candidates[0]);
+    return;
+  }
+
+  candidates.slice(0,15).forEach(o=>{
+    const k=itemSearchKind(o);
+    const d=document.createElement('div');
+    d.className='searchResult';
+    const when=o.year!==undefined ? formatYear(o.year) :
+      (o.start!==undefined && o.end!==undefined ? formatYear(o.start)+' → '+formatYear(o.end) : '');
+    d.innerHTML='<strong>'+escapeHtml(o.name)+'</strong><small>'+kindLabel(k)+(when?' • '+escapeHtml(when):'')+'</small>';
+    d.addEventListener('click',()=>showSearchItem(o));
+    box.appendChild(d);
+  });
+
+  if(dateYear!==null){
+    const d=document.createElement('div');
+    d.className='searchResult';
+    d.innerHTML='<strong>📅 Aller à '+escapeHtml(formatYear(dateYear))+'</strong><small>Centrer la frise sur cette date</small>';
+    d.addEventListener('click',()=>goToSearchDate(dateYear));
+    box.appendChild(d);
+  }
+
+  if(!box.children.length){
+    box.innerHTML='<div class="searchResult"><small>Aucun résultat avec les catégories cochées.</small></div>';
+  }
+  box.style.display='block';
+}
+
+document.querySelectorAll('.filterChip').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    btn.classList.toggle('active');
+    if(!document.querySelector('.filterChip.active')){
+      btn.classList.add('active');
+    }
+  });
+});
+
+document.getElementById('searchBtn').addEventListener('click',runPersonSearch);
+document.getElementById('personSearch').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); runPersonSearch(); }
+});
+
+
+// ====================== V3 CONNECTÉE ======================
+const V3_ADMIN_UID='DW6wjTPlJjcoHxVrqBtProNyYDW2';
+const V3_TIMELINE_ID='family-main';
+let v3Auth=null, v3Db=null, v3User=null, v3Role=null;
+let v3ItemsUnsub=null, v3RequestsUnsub=null;
+let v3CloudIds=new Set(), v3ApplyingCloud=false, v3SaveTimer=null, v3Ready=false;
+
+window.__V3_CONNECTED=false;
+window.__V3_CAN_EDIT=true;
+
+function v3ConfigReady(){
+  const c=window.FRISE_FIREBASE_CONFIG;
+  return !!(c && c.apiKey && c.projectId && c.appId &&
+    !String(c.apiKey).includes('REMPLACEZ') &&
+    !String(c.appId).includes('REMPLACEZ'));
+}
+function v3State(text,kind){
+  const el=document.getElementById('v3State');
+  if(!el) return;
+  el.textContent=text;
+  el.className='v3State '+(kind||'');
+}
+function v3RoleLabel(r){
+  return r==='admin'?'Administrateur':r==='editor'?'Éditeur':r==='visitor'?'Visiteur':'En attente';
+}
+function v3CanEdit(){ return v3Role==='admin'||v3Role==='editor'; }
+
+function v3ApplyUi(){
+  window.__V3_CONNECTED=!!v3User;
+  window.__V3_CAN_EDIT=!v3User || v3CanEdit();
+  document.body.classList.toggle('v3ReadOnly',!!v3User && v3Role==='visitor');
+  const account=document.getElementById('accountBtn');
+  if(account) account.textContent=v3User ? ('👤 '+v3RoleLabel(v3Role)) : '👤 Compte';
+  const add=document.getElementById('addFab');
+  if(add && v3User && !v3CanEdit()) add.style.display='none';
+}
+
+function v3AllItems(){
+  const seen=new Set();
+  return [...rows,...points].filter(x=>{
+    if(!x || !x.id || seen.has(x.id)) return false;
+    seen.add(x.id); return true;
+  }).map((x,i)=>migrateItem(x,i)).filter(Boolean);
+}
+function v3StripMeta(data){
+  const x={...data};
+  delete x._updatedAt; delete x._updatedBy;
+  return x;
+}
+function v3Cache(items){
+  try{
+    localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
+      app:'Ma frise biblique',
+      schemaVersion:DATA_SCHEMA_VERSION,
+      appVersion:'3.0.1',
+      updatedAt:new Date().toISOString(),
+      timelineId:V3_TIMELINE_ID,
+      items
+    }));
+    localStorage.setItem(STORAGE_ITEMS_KEY,JSON.stringify(items));
+  }catch(e){}
+}
+function v3ApplyItems(items){
+  v3ApplyingCloud=true;
+  try{
+    rows=items.map((x,i)=>migrateItem(v3StripMeta(x),i)).filter(Boolean);
+    points.splice(0,points.length);
+    v3Cache(rows);
+    closeInfo();
+    draw();
+  }finally{
+    setTimeout(()=>{v3ApplyingCloud=false;},0);
+  }
+}
+async function v3SyncNow(){
+  if(!v3Db || !v3User || !v3CanEdit() || v3ApplyingCloud) return;
+  const items=v3AllItems();
+  const currentIds=new Set(items.map(x=>x.id));
+  try{
+    v3State('Synchronisation…','wait');
+    let batch=v3Db.batch(), ops=0;
+    const flush=async()=>{
+      if(ops){ await batch.commit(); batch=v3Db.batch(); ops=0; }
+    };
+    for(const item of items){
+      const approx=JSON.stringify(item).length;
+      if(approx>900000){
+        alert('Une fiche est trop volumineuse pour la synchronisation en ligne. Retire ou réduis son image.');
+        continue;
+      }
+      const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(item.id);
+      batch.set(ref,{...item,_updatedAt:firebase.firestore.FieldValue.serverTimestamp(),_updatedBy:v3User.uid});
+      ops++;
+      if(ops>=350) await flush();
+    }
+    for(const id of v3CloudIds){
+      if(!currentIds.has(id)){
+        const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(id);
+        batch.delete(ref); ops++;
+        if(ops>=350) await flush();
+      }
+    }
+    batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
+      name:'Ma frise biblique',
+      schemaVersion:DATA_SCHEMA_VERSION,
+      appVersion:'3.0.1',
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy:v3User.uid
+    },{merge:true});
+    ops++;
+    await flush();
+    v3CloudIds=currentIds;
+    v3State('En ligne','ok');
+  }catch(e){
+    console.error(e);
+    v3State('Hors ligne','off');
+  }
+}
+window.v3QueueCloudSave=function(){
+  if(!v3Ready || !v3CanEdit() || v3ApplyingCloud) return;
+  clearTimeout(v3SaveTimer);
+  v3SaveTimer=setTimeout(v3SyncNow,500);
+};
+
+async function v3SubscribeItems(){
+  const col=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items');
+  const first=await col.get();
+  if(first.empty && v3CanEdit()){
+    await v3SyncNow();
+  }
+  if(v3ItemsUnsub) v3ItemsUnsub();
+  v3ItemsUnsub=col.onSnapshot(snap=>{
+    const items=snap.docs.map(d=>({id:d.id,...d.data()}));
+    v3CloudIds=new Set(items.map(x=>x.id));
+    if(items.length) v3ApplyItems(items);
+    v3State('En ligne','ok');
+  },err=>{
+    console.error(err);
+    v3State('Hors ligne','off');
+  });
+  v3Ready=true;
+}
+
+async function v3CreateAccessRequest(){
+  if(!v3User) return;
+  await v3Db.collection('accessRequests').doc(v3User.uid).set({
+    uid:v3User.uid,
+    email:v3User.email||'',
+    status:'pending',
+    requestedAt:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true});
+}
+
+async function v3ResolveRole(){
+  if(!v3User) return null;
+  if(v3User.uid===V3_ADMIN_UID) return 'admin';
+  const snap=await v3Db.collection('users').doc(v3User.uid).get();
+  if(snap.exists && ['editor','visitor'].includes(snap.data().role)) return snap.data().role;
+  return null;
+}
+async function v3AfterLogin(user){
+  v3User=user;
+  try{
+    v3Role=await v3ResolveRole();
+    if(!v3Role){
+      await v3CreateAccessRequest();
+      v3ApplyUi();
+      document.getElementById('v3LoginBox').style.display='none';
+      document.getElementById('v3PendingBox').style.display='block';
+      document.getElementById('v3AuthOverlay').classList.add('show');
+      v3State('En attente','wait');
+      return;
+    }
+    v3ApplyUi();
+    document.getElementById('v3AuthOverlay').classList.remove('show');
+    document.getElementById('v3LoginBox').style.display='block';
+    document.getElementById('v3PendingBox').style.display='none';
+    await v3SubscribeItems();
+  }catch(e){
+    console.error(e);
+    v3Message('Impossible de vérifier les droits d’accès.',true);
+    document.getElementById('v3AuthOverlay').classList.add('show');
+  }
+}
+
+function v3Message(text,error=false){
+  const el=document.getElementById('v3AuthMsg');
+  el.textContent=text||'';
+  el.className=error?'error':'';
+}
+function v3FriendlyError(e){
+  const c=e&&e.code||'';
+  if(c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found')) return 'E-mail ou mot de passe incorrect.';
+  if(c.includes('email-already-in-use')) return 'Cette adresse possède déjà un compte.';
+  if(c.includes('weak-password')) return 'Choisis un mot de passe d’au moins 6 caractères.';
+  if(c.includes('invalid-email')) return 'Adresse e-mail invalide.';
+  if(c.includes('too-many-requests')) return 'Trop de tentatives. Réessaie un peu plus tard.';
+  return (e&&e.message)||'Une erreur est survenue.';
+}
+async function v3Login(){
+  const email=document.getElementById('v3Email').value.trim();
+  const pass=document.getElementById('v3Password').value;
+  try{v3Message('Connexion…');await v3Auth.signInWithEmailAndPassword(email,pass);}
+  catch(e){v3Message(v3FriendlyError(e),true);}
+}
+async function v3Signup(){
+  const email=document.getElementById('v3Email').value.trim();
+  const pass=document.getElementById('v3Password').value;
+  try{v3Message('Création du compte…');await v3Auth.createUserWithEmailAndPassword(email,pass);}
+  catch(e){v3Message(v3FriendlyError(e),true);}
+}
+async function v3Reset(){
+  const email=document.getElementById('v3Email').value.trim();
+  if(!email){v3Message('Entre d’abord ton adresse e-mail.',true);return;}
+  try{await v3Auth.sendPasswordResetEmail(email);v3Message('E-mail de réinitialisation envoyé.');}
+  catch(e){v3Message(v3FriendlyError(e),true);}
+}
+async function v3Logout(){
+  document.getElementById('v3AccountOverlay').classList.remove('show');
+  if(v3Auth) await v3Auth.signOut();
+}
+function v3OpenAccount(){
+  if(!v3User){document.getElementById('v3AuthOverlay').classList.add('show');return;}
+  document.getElementById('v3AccountEmail').textContent=v3User.email||'';
+  document.getElementById('v3AccountRole').textContent=v3RoleLabel(v3Role);
+  document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
+  document.getElementById('v3AccountOverlay').classList.add('show');
+  if(v3Role==='admin') v3WatchRequests();
+}
+function v3WatchRequests(){
+  if(v3RequestsUnsub) v3RequestsUnsub();
+  v3RequestsUnsub=v3Db.collection('accessRequests').onSnapshot(snap=>{
+    const box=document.getElementById('v3RequestsList');
+    box.innerHTML='';
+    if(snap.empty){
+      box.innerHTML='<p class="v3Sub">Aucune demande en attente.</p>';
+      return;
+    }
+    snap.docs.forEach(d=>{
+      const r={id:d.id,...d.data()};
+      const div=document.createElement('div');
+      div.className='v3Request';
+      div.innerHTML='<strong>'+escapeHtml(r.email||r.uid)+'</strong>'+
+        '<small>Demande d’accès</small>'+
+        '<div class="v3ReqActions">'+
+        '<button class="v3Visitor" type="button">👁 Visiteur</button>'+
+        '<button class="v3Editor" type="button">✏️ Éditeur</button>'+
+        '<button class="v3Reject" type="button">Refuser</button></div>';
+      div.querySelector('.v3Visitor').onclick=()=>v3Approve(r,'visitor');
+      div.querySelector('.v3Editor').onclick=()=>v3Approve(r,'editor');
+      div.querySelector('.v3Reject').onclick=()=>v3Reject(r);
+      box.appendChild(div);
+    });
+  },e=>console.error(e));
+}
+async function v3Approve(r,role){
+  if(v3Role!=='admin') return;
+  await v3Db.collection('users').doc(r.uid).set({
+    email:r.email||'', role,
+    approvedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    approvedBy:v3User.uid
+  },{merge:true});
+  await v3Db.collection('accessRequests').doc(r.uid).delete();
+}
+async function v3Reject(r){
+  if(v3Role!=='admin') return;
+  await v3Db.collection('accessRequests').doc(r.uid).delete();
+}
+
+function initV3(){
+  document.getElementById('v3LoginBtn').onclick=v3Login;
+  document.getElementById('v3SignupBtn').onclick=v3Signup;
+  document.getElementById('v3ResetBtn').onclick=v3Reset;
+  document.getElementById('v3PendingLogout').onclick=v3Logout;
+  document.getElementById('v3LogoutBtn').onclick=v3Logout;
+  document.getElementById('accountBtn').onclick=v3OpenAccount;
+  document.getElementById('v3AccountClose').onclick=()=>document.getElementById('v3AccountOverlay').classList.remove('show');
+
+  if(!v3ConfigReady()){
+    document.getElementById('v3SetupBox').style.display='block';
+    document.getElementById('v3LoginBox').style.display='none';
+    document.getElementById('v3AuthOverlay').classList.add('show');
+    v3State('À configurer','wait');
+    return;
+  }
+
+  firebase.initializeApp(window.FRISE_FIREBASE_CONFIG);
+  v3Auth=firebase.auth();
+  v3Db=firebase.firestore();
+  try{v3Db.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}
+
+  v3Auth.onAuthStateChanged(user=>{
+    if(v3ItemsUnsub){v3ItemsUnsub();v3ItemsUnsub=null;}
+    v3Ready=false;v3CloudIds=new Set();
+    if(!user){
+      v3User=null;v3Role=null;
+      window.__V3_CONNECTED=false;
+      window.__V3_CAN_EDIT=true;
+      document.body.classList.remove('v3ReadOnly');
+      document.getElementById('v3LoginBox').style.display='block';
+      document.getElementById('v3PendingBox').style.display='none';
+      document.getElementById('v3AuthOverlay').classList.add('show');
+      v3ApplyUi();
+      v3State('Déconnecté','off');
+      return;
+    }
+    v3AfterLogin(user);
+  });
+}
+
+
+loadUserPersons();
+resize();
+initV3();
+</script>
+</body>
+</html>

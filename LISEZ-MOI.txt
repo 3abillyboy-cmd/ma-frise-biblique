@@ -1,0 +1,15 @@
+MA FRISE BIBLIQUE — V3.0.1 CONNECTÉE
+
+Configuration Firebase intégrée.
+Base : V2.6.4.
+
+Fonctions V3 :
+- connexion Firebase par e-mail / mot de passe ;
+- administrateur reconnu par UID ;
+- rôles Éditeur et Visiteur ;
+- demandes d'accès et validation par l'administrateur ;
+- frise commune synchronisée avec Firestore ;
+- sauvegarde locale + Export / Import conservés.
+
+Prochaine étape : publier ces fichiers sur un hébergement Web statique,
+puis autoriser le domaine du site dans Firebase Authentication.
