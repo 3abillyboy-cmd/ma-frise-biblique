@@ -1018,38 +1018,8 @@ function runQuickAction(e,fn){
 }
 
 
-let rows = [
- {name:'Saül',type:'Personnage',start:-1117,end:-1078,color:'#3b82f6',y:86,ref:'1 Samuel',notes:'Période de vie de démonstration.',fadeStart:true,fadeEnd:true},
- {name:'David',type:'Personnage',start:-1107,end:-1037,color:'#3b82f6',y:132,ref:'1 Samuel ; 2 Samuel',notes:'Vie + événements + règne liés dans une même fiche.',fadeStart:true,fadeEnd:true},
- {name:'Salomon',type:'Personnage',start:-1074,end:-993,color:'#3b82f6',y:178,ref:'1 Rois 1–11',notes:'Exemple de personnage avec fin de vie estimée.',fadeEnd:true},
-
- {name:'Règne de Saül',type:'Règne — royaume uni',start:-1097,end:-1078,color:'#8b5cf6',y:252,ref:'1 Samuel 10–31',notes:'Couleur distincte des personnages.'},
- {name:'Règne de David',type:'Règne — royaume uni',start:-1077,end:-1037,color:'#8b5cf6',y:298,ref:'2 Samuel 5:4,5',notes:'Une période de règne séparée de sa période de vie.'},
- {name:'Règne de Salomon',type:'Règne — royaume uni',start:-1037,end:-998,color:'#8b5cf6',y:344,ref:'1 Rois 2:12',notes:'Exemple de règne.'},
-
- {name:'Jérémie',type:'Prophète — activité',start:-647,end:-580,color:'#10b981',y:428,ref:'Jérémie 1:1-3',notes:'Activité prophétique affichée comme une période.',fadeStart:true,fadeEnd:true},
- {name:'Livre de Jérémie',type:'Livre biblique — période couverte',start:-647,end:-580,color:'#14b8a6',y:474,ref:'Livre de Jérémie',notes:'Sélectionner un livre permettra ensuite d’afficher automatiquement son contexte.'}
-];
-
-
-rows.forEach((o,i)=>{
-  if(!o.id) o.id='builtin_row_'+i;
-  if(o.userCreated===undefined) o.userCreated=true;
-  o.builtIn=true;
-  o.locked=false;
-});
-const points = [
- {name:'David et Goliath',type:'Événement',year:-1080,y:552,color:'#f59e0b',ref:'1 Samuel 17',notes:'Événement ponctuel.'},
- {name:'Prise de Jérusalem',type:'Événement',year:-1070,y:596,color:'#f59e0b',ref:'2 Samuel 5:6-9',notes:'Événement ponctuel.'},
- {name:'Destruction de Jérusalem',type:'Événement',year:-607,y:640,color:'#ef4444',ref:'2 Rois 25 ; Jérémie 39',notes:'Exemple pour la période de Jérémie.'}
-];
-points.forEach((o,i)=>{
-  if(!o.id) o.id='builtin_point_'+i;
-  if(o.userCreated===undefined) o.userCreated=true;
-  o.builtIn=true;
-  o.locked=false;
-});
-
+let rows = [];
+const points = [];
 
 let centerYear=-1000;
 let pxPerYear=2.3;
@@ -1227,7 +1197,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.0.3',
+    appVersion:'3.0.5',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -2741,6 +2711,7 @@ const V3_TIMELINE_ID='family-main';
 let v3Auth=null, v3Db=null, v3User=null, v3Role=null;
 let v3ItemsUnsub=null, v3RequestsUnsub=null;
 let v3CloudIds=new Set(), v3ApplyingCloud=false, v3SaveTimer=null, v3Ready=false;
+let v3LocalDirty=false, v3Syncing=false, v3LocalRevision=0, v3ResyncRequested=false;
 let v3LastCloudError='', v3LastCloudErrorWhere='';
 
 window.__V3_CONNECTED=false;
@@ -2765,7 +2736,7 @@ function v3CloudError(where,e){
   const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
   v3LastCloudErrorWhere=where||'Firebase';
   v3LastCloudError=code+' — '+msg;
-  console.error('[V3.0.3 '+v3LastCloudErrorWhere+']',e);
+  console.error('[V3.0.5 '+v3LastCloudErrorWhere+']',e);
   v3State('Erreur cloud ⚠️','off');
 }
 function v3ClearCloudError(){
@@ -2819,7 +2790,7 @@ function v3Cache(items){
     localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
       app:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.0.3',
+      appVersion:'3.0.5',
       updatedAt:new Date().toISOString(),
       timelineId:V3_TIMELINE_ID,
       items
@@ -2827,13 +2798,31 @@ function v3Cache(items){
     localStorage.setItem(STORAGE_ITEMS_KEY,JSON.stringify(items));
   }catch(e){}
 }
+function v3NormalizeCloudItem(raw,index){
+  const x=migrateItem(v3StripMeta(raw),index);
+  if(!x) return null;
+  // Toute fiche qui possède une année unique est forcément un événement ponctuel.
+  // Cela protège aussi les anciennes données où eventMode n'existait pas encore.
+  if(x.entityKind==='event' && x.year!==undefined && x.year!==null){
+    x.eventMode='point';
+  }
+  return x;
+}
 function v3ApplyItems(items){
   v3ApplyingCloud=true;
   try{
-    rows=items.map((x,i)=>migrateItem(v3StripMeta(x),i)).filter(Boolean);
-    points.splice(0,points.length);
-    v3Cache(rows);
+    const normalized=items.map((x,i)=>v3NormalizeCloudItem(x,i)).filter(Boolean);
+    const rowItems=[];
+    const pointItems=[];
+    for(const item of normalized){
+      if(item.entityKind==='event' && item.eventMode==='point') pointItems.push(item);
+      else rowItems.push(item);
+    }
+    rows=rowItems;
+    points.splice(0,points.length,...pointItems);
+    v3Cache(normalized);
     closeInfo();
+    clampVertical();
     draw();
   }finally{
     setTimeout(()=>{v3ApplyingCloud=false;},0);
@@ -2841,8 +2830,15 @@ function v3ApplyItems(items){
 }
 async function v3SyncNow(){
   if(!v3Db || !v3User || !v3CanEdit() || v3ApplyingCloud) return;
+  if(v3Syncing){
+    v3ResyncRequested=true;
+    return;
+  }
+
+  const revisionAtStart=v3LocalRevision;
   const items=v3AllItems();
   const currentIds=new Set(items.map(x=>x.id));
+  v3Syncing=true;
   try{
     v3State('Synchronisation…','wait');
     let batch=v3Db.batch(), ops=0;
@@ -2871,23 +2867,56 @@ async function v3SyncNow(){
     batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
       name:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.0.3',
+      appVersion:'3.0.5',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true});
     ops++;
     await flush();
+
     v3CloudIds=currentIds;
+    if(v3LocalRevision===revisionAtStart){
+      v3LocalDirty=false;
+    }
     v3ClearCloudError();
-    v3State('En ligne','ok');
+    v3State(v3LocalDirty?'Synchronisation…':'En ligne',v3LocalDirty?'wait':'ok');
+
+    // Relire le serveur après l'écriture. Cela récupère aussi les ajouts faits
+    // presque en même temps depuis un autre téléphone, sans écraser une
+    // modification locale plus récente.
+    if(!v3LocalDirty){
+      try{
+        const fresh=await v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').get({source:'server'});
+        if(v3LocalRevision===revisionAtStart){
+          const freshItems=fresh.docs.map(d=>({id:d.id,...d.data()}));
+          v3CloudIds=new Set(freshItems.map(x=>x.id));
+          v3ApplyItems(freshItems);
+        }
+      }catch(e){
+        console.warn('[V3.0.5 relecture serveur]',e);
+      }
+    }
   }catch(e){
+    v3LocalDirty=true;
     v3CloudError('écriture/synchronisation',e);
+  }finally{
+    v3Syncing=false;
+    if(v3ResyncRequested || v3LocalDirty){
+      const shouldRetry=v3ResyncRequested || v3LocalRevision!==revisionAtStart;
+      v3ResyncRequested=false;
+      if(shouldRetry){
+        clearTimeout(v3SaveTimer);
+        v3SaveTimer=setTimeout(v3SyncNow,250);
+      }
+    }
   }
 }
 window.v3QueueCloudSave=function(){
+  v3LocalDirty=true;
+  v3LocalRevision++;
   if(!v3Ready || !v3CanEdit() || v3ApplyingCloud) return;
   clearTimeout(v3SaveTimer);
-  v3SaveTimer=setTimeout(v3SyncNow,500);
+  v3SaveTimer=setTimeout(v3SyncNow,250);
 };
 
 async function v3SubscribeItems(){
@@ -2900,20 +2929,37 @@ async function v3SubscribeItems(){
     v3Ready=true;
     return;
   }
-  if(first.empty && v3CanEdit()){
-    await v3SyncNow();
-  }
+
+  // Au démarrage, le cloud est la source de vérité. Cela évite de renvoyer
+  // d'anciennes données de démonstration conservées dans le navigateur.
+  const firstItems=first.docs.map(d=>({id:d.id,...d.data()}));
+  v3CloudIds=new Set(firstItems.map(x=>x.id));
+  v3ApplyItems(firstItems);
+
   if(v3ItemsUnsub) v3ItemsUnsub();
   v3ItemsUnsub=col.onSnapshot(snap=>{
     const items=snap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // Point clé V3.0.5 : si une fiche vient d'être modifiée localement,
+    // on n'applique PAS un instantané cloud plus ancien qui pourrait la faire
+    // disparaître avant son envoi. C'était la cause des ajouts invisibles.
+    if(v3LocalDirty || v3Syncing){
+      v3State('Synchronisation…','wait');
+      return;
+    }
+
     v3CloudIds=new Set(items.map(x=>x.id));
-    if(items.length) v3ApplyItems(items);
+    v3ApplyItems(items);
     v3ClearCloudError();
     v3State('En ligne','ok');
   },err=>{
     v3CloudError('lecture temps réel',err);
   });
   v3Ready=true;
+
+  // Si une modification locale a été faite pendant l'initialisation,
+  // l'envoyer maintenant au lieu de la perdre.
+  if(v3LocalDirty && v3CanEdit()) v3SyncNow();
 }
 
 async function v3CreateAccessRequest(){
@@ -3002,9 +3048,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 3.0.3</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 3.0.5</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 3.0.3</strong><br>Firebase : aucune erreur détectée.';
+      diag.innerHTML='<strong>Version 3.0.5</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
   document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
@@ -3075,7 +3121,7 @@ function initV3(){
 
   v3Auth.onAuthStateChanged(user=>{
     if(v3ItemsUnsub){v3ItemsUnsub();v3ItemsUnsub=null;}
-    v3Ready=false;v3CloudIds=new Set();
+    v3Ready=false;v3CloudIds=new Set();v3LocalDirty=false;v3Syncing=false;v3ResyncRequested=false;clearTimeout(v3SaveTimer);
     if(!user){
       v3User=null;v3Role=null;
       window.__V3_CONNECTED=false;
