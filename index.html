@@ -1227,7 +1227,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.0.2',
+    appVersion:'3.0.3',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -1869,9 +1869,7 @@ function saveEvent(){
     name,
     type:'Événement',
     eventMode:mode,
-    year:mode==='point' ? start : undefined,
-    start:mode==='period' ? start : undefined,
-    end:mode==='period' ? end : undefined,
+    ...(mode==='point' ? {year:start} : {start:start,end:end}),
     color:'#b45309',
     y:560 + (rows.filter(r=>r.userCreated && r.entityKind==='event').length%4)*54,
     ref:document.getElementById('eRefs').value.trim() || 'Aucune référence indiquée',
@@ -2767,7 +2765,7 @@ function v3CloudError(where,e){
   const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
   v3LastCloudErrorWhere=where||'Firebase';
   v3LastCloudError=code+' — '+msg;
-  console.error('[V3.0.2 '+v3LastCloudErrorWhere+']',e);
+  console.error('[V3.0.3 '+v3LastCloudErrorWhere+']',e);
   v3State('Erreur cloud ⚠️','off');
 }
 function v3ClearCloudError(){
@@ -2801,12 +2799,27 @@ function v3StripMeta(data){
   delete x._updatedAt; delete x._updatedBy;
   return x;
 }
+// Firestore refuse les propriétés dont la valeur est undefined.
+// On nettoie récursivement chaque fiche avant l'envoi afin que tous les
+// types d'éléments (dates, événements, personnages, règnes, livres, etc.)
+// puissent être synchronisés sans faire échouer tout le lot.
+function v3CleanForFirestore(value){
+  if(Array.isArray(value)) return value.filter(v=>v!==undefined).map(v3CleanForFirestore);
+  if(value && typeof value==='object'){
+    const out={};
+    for(const [k,v] of Object.entries(value)){
+      if(v!==undefined) out[k]=v3CleanForFirestore(v);
+    }
+    return out;
+  }
+  return value;
+}
 function v3Cache(items){
   try{
     localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
       app:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.0.2',
+      appVersion:'3.0.3',
       updatedAt:new Date().toISOString(),
       timelineId:V3_TIMELINE_ID,
       items
@@ -2843,7 +2856,8 @@ async function v3SyncNow(){
         continue;
       }
       const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(item.id);
-      batch.set(ref,{...item,_updatedAt:firebase.firestore.FieldValue.serverTimestamp(),_updatedBy:v3User.uid});
+      const cleanItem=v3CleanForFirestore(item);
+      batch.set(ref,{...cleanItem,_updatedAt:firebase.firestore.FieldValue.serverTimestamp(),_updatedBy:v3User.uid});
       ops++;
       if(ops>=350) await flush();
     }
@@ -2857,7 +2871,7 @@ async function v3SyncNow(){
     batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
       name:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.0.2',
+      appVersion:'3.0.3',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true});
@@ -2986,12 +3000,11 @@ function v3OpenAccount(){
   document.getElementById('v3AccountRole').textContent=v3RoleLabel(v3Role);
   const diag=document.getElementById('v3DiagBox');
   if(diag){
+    diag.style.display='block';
     if(v3LastCloudError){
-      diag.style.display='block';
-      diag.innerHTML='<strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 3.0.3</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.style.display='none';
-      diag.textContent='';
+      diag.innerHTML='<strong>Version 3.0.3</strong><br>Firebase : aucune erreur détectée.';
     }
   }
   document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
