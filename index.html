@@ -439,6 +439,7 @@ body.v3ReadOnly .importBtn{display:none!important}
     <h2>👤 Mon compte</h2>
     <p id="v3AccountEmail" class="v3Sub"></p>
     <p><span id="v3AccountRole" class="v3Role">—</span></p>
+    <div id="v3DiagBox" style="display:none;margin:10px 0;padding:10px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:13px;line-height:1.35;word-break:break-word"></div>
 
     <div id="v3AdminRequests" style="display:none">
       <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
@@ -1226,7 +1227,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.0.1',
+    appVersion:'3.0.2',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -2742,6 +2743,7 @@ const V3_TIMELINE_ID='family-main';
 let v3Auth=null, v3Db=null, v3User=null, v3Role=null;
 let v3ItemsUnsub=null, v3RequestsUnsub=null;
 let v3CloudIds=new Set(), v3ApplyingCloud=false, v3SaveTimer=null, v3Ready=false;
+let v3LastCloudError='', v3LastCloudErrorWhere='';
 
 window.__V3_CONNECTED=false;
 window.__V3_CAN_EDIT=true;
@@ -2757,6 +2759,20 @@ function v3State(text,kind){
   if(!el) return;
   el.textContent=text;
   el.className='v3State '+(kind||'');
+  if(v3LastCloudError) el.title=v3LastCloudError;
+  else el.removeAttribute('title');
+}
+function v3CloudError(where,e){
+  const code=(e&&e.code)?String(e.code):'sans-code';
+  const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
+  v3LastCloudErrorWhere=where||'Firebase';
+  v3LastCloudError=code+' — '+msg;
+  console.error('[V3.0.2 '+v3LastCloudErrorWhere+']',e);
+  v3State('Erreur cloud ⚠️','off');
+}
+function v3ClearCloudError(){
+  v3LastCloudError='';
+  v3LastCloudErrorWhere='';
 }
 function v3RoleLabel(r){
   return r==='admin'?'Administrateur':r==='editor'?'Éditeur':r==='visitor'?'Visiteur':'En attente';
@@ -2790,7 +2806,7 @@ function v3Cache(items){
     localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
       app:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.0.1',
+      appVersion:'3.0.2',
       updatedAt:new Date().toISOString(),
       timelineId:V3_TIMELINE_ID,
       items
@@ -2841,17 +2857,17 @@ async function v3SyncNow(){
     batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
       name:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.0.1',
+      appVersion:'3.0.2',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true});
     ops++;
     await flush();
     v3CloudIds=currentIds;
+    v3ClearCloudError();
     v3State('En ligne','ok');
   }catch(e){
-    console.error(e);
-    v3State('Hors ligne','off');
+    v3CloudError('écriture/synchronisation',e);
   }
 }
 window.v3QueueCloudSave=function(){
@@ -2862,7 +2878,14 @@ window.v3QueueCloudSave=function(){
 
 async function v3SubscribeItems(){
   const col=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items');
-  const first=await col.get();
+  let first;
+  try{
+    first=await col.get();
+  }catch(e){
+    v3CloudError('lecture initiale',e);
+    v3Ready=true;
+    return;
+  }
   if(first.empty && v3CanEdit()){
     await v3SyncNow();
   }
@@ -2871,10 +2894,10 @@ async function v3SubscribeItems(){
     const items=snap.docs.map(d=>({id:d.id,...d.data()}));
     v3CloudIds=new Set(items.map(x=>x.id));
     if(items.length) v3ApplyItems(items);
+    v3ClearCloudError();
     v3State('En ligne','ok');
   },err=>{
-    console.error(err);
-    v3State('Hors ligne','off');
+    v3CloudError('lecture temps réel',err);
   });
   v3Ready=true;
 }
@@ -2915,8 +2938,8 @@ async function v3AfterLogin(user){
     document.getElementById('v3PendingBox').style.display='none';
     await v3SubscribeItems();
   }catch(e){
-    console.error(e);
-    v3Message('Impossible de vérifier les droits d’accès.',true);
+    v3CloudError('vérification des droits',e);
+    v3Message('Impossible de vérifier les droits d’accès : '+((e&&e.code)||'erreur inconnue'),true);
     document.getElementById('v3AuthOverlay').classList.add('show');
   }
 }
@@ -2961,6 +2984,16 @@ function v3OpenAccount(){
   if(!v3User){document.getElementById('v3AuthOverlay').classList.add('show');return;}
   document.getElementById('v3AccountEmail').textContent=v3User.email||'';
   document.getElementById('v3AccountRole').textContent=v3RoleLabel(v3Role);
+  const diag=document.getElementById('v3DiagBox');
+  if(diag){
+    if(v3LastCloudError){
+      diag.style.display='block';
+      diag.innerHTML='<strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+    }else{
+      diag.style.display='none';
+      diag.textContent='';
+    }
+  }
   document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
   document.getElementById('v3AccountOverlay').classList.add('show');
   if(v3Role==='admin') v3WatchRequests();
