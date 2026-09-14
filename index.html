@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Ma frise biblique — V3.4.1 connectée</title>
+<title>Ma frise biblique — V4.1 multi-frises</title>
 <style>
 :root{
   --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
@@ -320,7 +320,7 @@ textarea{min-height:76px;resize:vertical}
 }
 .dataToolbar .chip{margin:0}
 
-/* ===== V3.4.1 connectée ===== */
+/* ===== V4.1 multi-frises ===== */
 .v3State{
   flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
   background:#334155;color:#e2e8f0;white-space:nowrap
@@ -426,6 +426,30 @@ body{display:flex;flex-direction:column;background:#0b1323}
 .fab{right:10px!important;bottom:max(12px,env(safe-area-inset-bottom))!important}
 @media(max-width:430px){.v33Search{margin:5px 7px!important}.v33Header{height:52px;min-height:52px}.v33IconBtn{width:36px;height:36px;flex-basis:36px}}
 
+
+/* ===== V4.1 — multi-frises ===== */
+#v4TimelineTitle{cursor:pointer;display:flex;align-items:center;gap:3px;min-width:0}
+#v4TimelineTitle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#v4TimelineChevron{font-size:12px;color:#93a4bd;font-weight:900}
+.v4Box{margin-top:14px;padding:13px;border:1px solid #dbe4ef;border-radius:15px;background:#f8fafc}
+.v4Box h3{margin:0 0 5px;font-size:16px}.v4Box .v3Sub{margin-bottom:10px}
+.v4ChoiceGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.v4TimelineList{display:grid;gap:7px;margin-top:8px}
+.v4TimelineItem{display:flex;gap:8px;align-items:center;padding:10px;border:1px solid #dbe4ef;border-radius:12px;background:#fff}
+.v4TimelineItem.active{border-color:#60a5fa;background:#eff6ff}
+.v4TimelineMain{flex:1;min-width:0}.v4TimelineMain strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v4TimelineMain small{display:block;color:#64748b;margin-top:2px}
+.v4TimelineItem button{border:0;border-radius:10px;padding:8px 9px;font-weight:850;background:#e2e8f0;color:#0f172a}
+.v4InviteResult{display:none;margin-top:9px;padding:11px;border-radius:12px;background:#ecfdf5;color:#166534;line-height:1.4}
+.v4InviteCode{display:block;margin:6px 0;font-size:21px;font-weight:950;letter-spacing:.08em;color:#14532d}
+.v4Member{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #edf2f7}
+.v4Member:last-child{border-bottom:0}.v4Member .v4MemberText{flex:1;min-width:0}.v4Member small{display:block;color:#64748b;overflow-wrap:anywhere}
+.v4Member select{border:1px solid #cbd5e1;border-radius:9px;padding:7px;background:#fff}
+.v4Tiny{font-size:12px;color:#64748b}
+#v4OnboardingBox{display:none}
+#v4TimelineOverlay .v3Card{max-height:88vh}
+@media(max-width:390px){.v4ChoiceGrid{grid-template-columns:1fr}}
+
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
@@ -466,9 +490,34 @@ body{display:flex;flex-direction:column;background:#0b1323}
     </div>
 
     <div id="v3PendingBox" style="display:none">
-      <div class="v3Pending">
-        <strong>⏳ Demande d’accès enregistrée</strong><br>
-        Ton compte existe, mais l’administrateur doit encore t’attribuer le rôle Visiteur ou Éditeur.
+      <div id="v4OnboardingBox">
+        <div class="v3Pending" style="background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a">
+          <strong>📖 Bienvenue</strong><br>
+          Choisis comment commencer : créer ta propre frise vierge ou rejoindre une frise avec un code d’invitation.
+        </div>
+        <div class="v4ChoiceGrid" style="margin-top:10px">
+          <button id="v4StartCreateBtn" class="v3Primary" type="button">＋ Créer une frise</button>
+          <button id="v4StartJoinBtn" class="v3Secondary" type="button">🔗 Rejoindre une frise</button>
+        </div>
+        <div id="v4OnboardingCreate" class="v4Box" style="display:none">
+          <h3>Créer une frise vierge</h3>
+          <div class="v3Grid">
+            <label>Nom de la frise
+              <input id="v4FirstTimelineName" type="text" maxlength="80" placeholder="Ex. Ma chronologie biblique">
+            </label>
+          </div>
+          <div class="v3Row"><button id="v4FirstCreateConfirm" class="v3Primary" type="button">Créer</button></div>
+        </div>
+        <div id="v4OnboardingJoin" class="v4Box" style="display:none">
+          <h3>Rejoindre une frise</h3>
+          <div class="v3Grid">
+            <label>Code d’invitation
+              <input id="v4FirstJoinCode" type="text" maxlength="24" autocapitalize="characters" placeholder="Ex. ABRAHAM-7K4P">
+            </label>
+          </div>
+          <div class="v3Row"><button id="v4FirstJoinConfirm" class="v3Primary" type="button">Rejoindre</button></div>
+        </div>
+        <div id="v4OnboardingMsg" class="v4Tiny" style="margin-top:10px"></div>
       </div>
       <div class="v3Row">
         <button id="v3PendingLogout" class="v3Secondary" type="button">Se déconnecter</button>
@@ -484,11 +533,37 @@ body{display:flex;flex-direction:column;background:#0b1323}
     <p><span id="v3AccountRole" class="v3Role">—</span></p>
     <div id="v3DiagBox" style="display:none;margin:10px 0;padding:10px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:13px;line-height:1.35;word-break:break-word"></div>
 
-    <div id="v3AdminRequests" style="display:none">
-      <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
-      <h3 style="margin:0">Demandes d’accès</h3>
-      <p class="v3Sub">Attribue un rôle aux nouveaux comptes.</p>
-      <div id="v3RequestsList"></div>
+    <div id="v41SiteAdminBox" class="v4Box" style="display:none">
+      <h3>🛡️ Administration du site</h3>
+      <p class="v3Sub">Les nouveaux comptes doivent être autorisés avant de pouvoir créer ou rejoindre une frise.</p>
+      <div id="v41AccessRequests"></div>
+    </div>
+
+    <div id="v4AccountTimelineBox" class="v4Box">
+      <h3>📚 Mes frises</h3>
+      <p class="v3Sub">Tu peux avoir plusieurs frises et passer de l’une à l’autre.</p>
+      <div id="v4AccountTimelineList" class="v4TimelineList"></div>
+      <div class="v4ChoiceGrid" style="margin-top:10px">
+        <button id="v4AccountCreateBtn" class="v3Primary" type="button">＋ Nouvelle frise</button>
+        <button id="v4AccountJoinBtn" class="v3Secondary" type="button">🔗 Rejoindre</button>
+      </div>
+    </div>
+
+    <div id="v4AdminTimelineBox" class="v4Box" style="display:none">
+      <h3>👥 Partager cette frise</h3>
+      <p class="v3Sub">Crée un code et envoie-le à la personne que tu veux inviter.</p>
+      <div class="v3Grid">
+        <label>Rôle de la personne invitée
+          <select id="v4InviteRole" style="margin-top:5px;width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:#fff;color:#0f172a;font-size:16px">
+            <option value="visitor">Visiteur — lecture seule</option>
+            <option value="editor">Éditeur — peut modifier</option>
+          </select>
+        </label>
+      </div>
+      <div class="v3Row"><button id="v4CreateInviteBtn" class="v3Primary" type="button">Créer un code</button></div>
+      <div id="v4InviteResult" class="v4InviteResult"></div>
+      <h3 style="margin-top:16px">Membres</h3>
+      <div id="v4MembersList"></div>
     </div>
 
     <div class="v3Row">
@@ -498,8 +573,38 @@ body{display:flex;flex-direction:column;background:#0b1323}
   </div>
 </div>
 
+<div id="v4TimelineOverlay" class="v3Overlay">
+  <div class="v3Card">
+    <h2>📚 Choisir une frise</h2>
+    <p class="v3Sub">Une seule application, plusieurs frises indépendantes.</p>
+    <div id="v4TimelineList" class="v4TimelineList"></div>
+    <div class="v4ChoiceGrid" style="margin-top:12px">
+      <button id="v4OverlayCreateBtn" class="v3Primary" type="button">＋ Créer</button>
+      <button id="v4OverlayJoinBtn" class="v3Secondary" type="button">🔗 Rejoindre</button>
+    </div>
+    <div class="v3Row"><button id="v4TimelineClose" class="v3Secondary" type="button">Fermer</button></div>
+  </div>
+</div>
+
+<div id="v4SimpleActionOverlay" class="v3Overlay">
+  <div class="v3Card">
+    <h2 id="v4SimpleTitle">Nouvelle frise</h2>
+    <p id="v4SimpleSub" class="v3Sub"></p>
+    <div class="v3Grid">
+      <label id="v4SimpleLabel">Nom
+        <input id="v4SimpleInput" type="text" maxlength="80">
+      </label>
+    </div>
+    <div id="v4SimpleMsg" class="v4Tiny" style="margin-top:9px"></div>
+    <div class="v3Row">
+      <button id="v4SimpleCancel" class="v3Secondary" type="button">Annuler</button>
+      <button id="v4SimpleConfirm" class="v3Primary" type="button">Valider</button>
+    </div>
+  </div>
+</div>
+
 <header class="v33Header">
-  <h1>📖 <span>Ma frise biblique</span></h1>
+  <h1 id="v4TimelineTitle" title="Changer de frise">📖 <span>Ma frise biblique</span> <small id="v4TimelineChevron">⌄</small></h1>
   <span id="v3State" class="v3State off">Local</span>
   <button class="v33IconBtn" onclick="resetView()" title="Recentrer" aria-label="Recentrer">◎</button>
   <button class="v33IconBtn" id="accountBtn" type="button" title="Compte" aria-label="Compte">👤</button>
@@ -1303,7 +1408,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.4.1',
+    appVersion:'4.1.0',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -1599,7 +1704,7 @@ function preciseDateLabel(o){
 }
 
 
-// V3.4 — dates précises + refonte visuelle mobile.
+// V4.1 — dates précises + multi-frises + refonte mobile.
 const PRECISE_DATE_FIELDS={
   pStart:{yearId:'pStartYear',eraId:'pStartEra',afterId:'pStartCert',title:'Naissance / début de vie'},
   pEnd:{yearId:'pEndYear',eraId:'pEndEra',afterId:'pEndCert',title:'Mort / fin de vie'},
@@ -3119,14 +3224,16 @@ document.getElementById('personSearch').addEventListener('keydown',e=>{
 });
 
 
-// ====================== V3 CONNECTÉE ======================
-const V3_ADMIN_UID='DW6wjTPlJjcoHxVrqBtProNyYDW2';
-const V3_TIMELINE_ID='family-main';
+// ====================== V4.0 MULTI-FRISES ======================
+const V4_LEGACY_ADMIN_UID='DW6wjTPlJjcoHxVrqBtProNyYDW2';
+const V4_LEGACY_TIMELINE_ID='family-main';
+let V3_TIMELINE_ID=V4_LEGACY_TIMELINE_ID; // conservé pour compatibilité avec l'ancien code local
 let v3Auth=null, v3Db=null, v3User=null, v3Role=null;
-let v3ItemsUnsub=null, v3RequestsUnsub=null;
-let v3CloudIds=new Set(), v3ApplyingCloud=false, v3SaveTimer=null, v3Ready=false;
+let v3ItemsUnsub=null, v3MembersUnsub=null;
+let v3CloudIds=new Set(), v3CloudMap=new Map(), v3ApplyingCloud=false, v3SaveTimer=null, v3Ready=false;
 let v3LocalDirty=false, v3Syncing=false, v3LocalRevision=0, v3ResyncRequested=false;
 let v3LastCloudError='', v3LastCloudErrorWhere='';
+let v4TimelineName='Ma frise biblique', v4TimelineRefs=[], v4CurrentMembership=null;
 
 window.__V3_CONNECTED=false;
 window.__V3_CAN_EDIT=true;
@@ -3150,26 +3257,51 @@ function v3CloudError(where,e){
   const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
   v3LastCloudErrorWhere=where||'Firebase';
   v3LastCloudError=code+' — '+msg;
-  console.error('[V3.4.1 '+v3LastCloudErrorWhere+']',e);
+  console.error('[V4.0 '+v3LastCloudErrorWhere+']',e);
   v3State('Erreur cloud ⚠️','off');
 }
-function v3ClearCloudError(){
-  v3LastCloudError='';
-  v3LastCloudErrorWhere='';
-}
+function v3ClearCloudError(){ v3LastCloudError=''; v3LastCloudErrorWhere=''; }
 function v3RoleLabel(r){
-  return r==='admin'?'Administrateur':r==='editor'?'Éditeur':r==='visitor'?'Visiteur':'En attente';
+  return r==='admin'?'Administrateur':r==='editor'?'Éditeur':r==='visitor'?'Visiteur':'—';
 }
 function v3CanEdit(){ return v3Role==='admin'||v3Role==='editor'; }
+function v4IsAdmin(){ return v3Role==='admin'; }
+function v41IsSuperAdmin(){ return !!(v3User && v3User.uid===V4_LEGACY_ADMIN_UID); }
+
+async function v41GetSiteAccess(){
+  if(v41IsSuperAdmin()) return {status:'approved',superAdmin:true};
+  const s=await v3Db.collection('siteAccess').doc(v3User.uid).get();
+  return s.exists?s.data():null;
+}
+async function v41RequestSiteAccess(){
+  if(v41IsSuperAdmin()) return;
+  const ref=v3Db.collection('siteAccess').doc(v3User.uid);
+  const s=await ref.get();
+  if(!s.exists){
+    await ref.set({
+      uid:v3User.uid,email:v3User.email||'',status:'pending',
+      requestedAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+}
+
+
+function v4SetTitle(){
+  const el=document.querySelector('#v4TimelineTitle span');
+  if(el) el.textContent=v4TimelineName||'Ma frise biblique';
+  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.0';
+}
 
 function v3ApplyUi(){
   window.__V3_CONNECTED=!!v3User;
   window.__V3_CAN_EDIT=!v3User || v3CanEdit();
   document.body.classList.toggle('v3ReadOnly',!!v3User && v3Role==='visitor');
   const account=document.getElementById('accountBtn');
-  if(account) account.textContent=v3User ? ('👤 '+v3RoleLabel(v3Role)) : '👤 Compte';
+  if(account) account.textContent='👤';
   const add=document.getElementById('addFab');
   if(add && v3User && !v3CanEdit()) add.style.display='none';
+  else if(add) add.style.display='';
+  v4SetTitle();
 }
 
 function v3AllItems(){
@@ -3184,10 +3316,6 @@ function v3StripMeta(data){
   delete x._updatedAt; delete x._updatedBy;
   return x;
 }
-// Firestore refuse les propriétés dont la valeur est undefined.
-// On nettoie récursivement chaque fiche avant l'envoi afin que tous les
-// types d'éléments (dates, événements, personnages, règnes, livres, etc.)
-// puissent être synchronisés sans faire échouer tout le lot.
 function v3CleanForFirestore(value){
   if(Array.isArray(value)) return value.filter(v=>v!==undefined).map(v3CleanForFirestore);
   if(value && typeof value==='object'){
@@ -3199,35 +3327,32 @@ function v3CleanForFirestore(value){
   }
   return value;
 }
+function v4Comparable(item){
+  try{return JSON.stringify(v3CleanForFirestore(v3StripMeta(item)));}
+  catch(e){return '';}
+}
 function v3Cache(items){
   try{
-    localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
-      app:'Ma frise biblique',
-      schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.4.1',
-      updatedAt:new Date().toISOString(),
-      timelineId:V3_TIMELINE_ID,
-      items
-    }));
+    const doc={
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.1.0',
+      updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
+    };
+    localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
+    localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify(doc));
     localStorage.setItem(STORAGE_ITEMS_KEY,JSON.stringify(items));
   }catch(e){}
 }
 function v3NormalizeCloudItem(raw,index){
   const x=migrateItem(v3StripMeta(raw),index);
   if(!x) return null;
-  // Toute fiche qui possède une année unique est forcément un événement ponctuel.
-  // Cela protège aussi les anciennes données où eventMode n'existait pas encore.
-  if(x.entityKind==='event' && x.year!==undefined && x.year!==null){
-    x.eventMode='point';
-  }
+  if(x.entityKind==='event' && x.year!==undefined && x.year!==null) x.eventMode='point';
   return x;
 }
 function v3ApplyItems(items){
   v3ApplyingCloud=true;
   try{
     const normalized=items.map((x,i)=>v3NormalizeCloudItem(x,i)).filter(Boolean);
-    const rowItems=[];
-    const pointItems=[];
+    const rowItems=[], pointItems=[];
     for(const item of normalized){
       if(item.entityKind==='event' && item.eventMode==='point') pointItems.push(item);
       else rowItems.push(item);
@@ -3242,12 +3367,10 @@ function v3ApplyItems(items){
     setTimeout(()=>{v3ApplyingCloud=false;},0);
   }
 }
+
 async function v3SyncNow(){
-  if(!v3Db || !v3User || !v3CanEdit() || v3ApplyingCloud) return;
-  if(v3Syncing){
-    v3ResyncRequested=true;
-    return;
-  }
+  if(!v3Db || !v3User || !V3_TIMELINE_ID || !v3CanEdit() || v3ApplyingCloud) return;
+  if(v3Syncing){v3ResyncRequested=true;return;}
 
   const revisionAtStart=v3LocalRevision;
   const items=v3AllItems();
@@ -3255,59 +3378,55 @@ async function v3SyncNow(){
   v3Syncing=true;
   try{
     v3State('Synchronisation…','wait');
-    let batch=v3Db.batch(), ops=0;
-    const flush=async()=>{
-      if(ops){ await batch.commit(); batch=v3Db.batch(); ops=0; }
-    };
+    let batch=v3Db.batch(), ops=0, writes=0;
+    const flush=async()=>{if(ops){await batch.commit();batch=v3Db.batch();ops=0;}};
+
+    // V4 : on n'écrit que les fiches réellement nouvelles ou modifiées.
     for(const item of items){
-      const approx=JSON.stringify(item).length;
+      const cleanItem=v3CleanForFirestore(item);
+      const approx=JSON.stringify(cleanItem).length;
       if(approx>900000){
         alert('Une fiche est trop volumineuse pour la synchronisation en ligne. Retire ou réduis son image.');
         continue;
       }
+      const cloud=v3CloudMap.get(item.id);
+      if(cloud && v4Comparable(cloud)===v4Comparable(cleanItem)) continue;
       const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(item.id);
-      const cleanItem=v3CleanForFirestore(item);
       batch.set(ref,{...cleanItem,_updatedAt:firebase.firestore.FieldValue.serverTimestamp(),_updatedBy:v3User.uid});
-      ops++;
+      ops++;writes++;
       if(ops>=350) await flush();
     }
+
+    // On ne supprime que des fiches qui existaient déjà dans CETTE frise.
     for(const id of v3CloudIds){
       if(!currentIds.has(id)){
         const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(id);
-        batch.delete(ref); ops++;
+        batch.delete(ref);ops++;writes++;
         if(ops>=350) await flush();
       }
     }
-    batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
-      name:'Ma frise biblique',
+
+    const tref=v3Db.collection('timelines').doc(V3_TIMELINE_ID);
+    batch.set(tref,{
+      name:v4TimelineName,
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.4.1',
+      appVersion:'4.1.0',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
-    },{merge:true});
-    ops++;
+    },{merge:true});ops++;
     await flush();
 
-    v3CloudIds=currentIds;
-    if(v3LocalRevision===revisionAtStart){
-      v3LocalDirty=false;
-    }
+    if(v3LocalRevision===revisionAtStart) v3LocalDirty=false;
     v3ClearCloudError();
     v3State(v3LocalDirty?'Synchronisation…':'En ligne',v3LocalDirty?'wait':'ok');
 
-    // Relire le serveur après l'écriture. Cela récupère aussi les ajouts faits
-    // presque en même temps depuis un autre téléphone, sans écraser une
-    // modification locale plus récente.
     if(!v3LocalDirty){
-      try{
-        const fresh=await v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').get({source:'server'});
-        if(v3LocalRevision===revisionAtStart){
-          const freshItems=fresh.docs.map(d=>({id:d.id,...d.data()}));
-          v3CloudIds=new Set(freshItems.map(x=>x.id));
-          v3ApplyItems(freshItems);
-        }
-      }catch(e){
-        console.warn('[V3.4.1 relecture serveur]',e);
+      const fresh=await tref.collection('items').get({source:'server'});
+      if(v3LocalRevision===revisionAtStart){
+        const freshItems=fresh.docs.map(d=>({id:d.id,...d.data()}));
+        v3CloudIds=new Set(freshItems.map(x=>x.id));
+        v3CloudMap=new Map(freshItems.map(x=>[x.id,x]));
+        v3ApplyItems(freshItems);
       }
     }
   }catch(e){
@@ -3318,10 +3437,7 @@ async function v3SyncNow(){
     if(v3ResyncRequested || v3LocalDirty){
       const shouldRetry=v3ResyncRequested || v3LocalRevision!==revisionAtStart;
       v3ResyncRequested=false;
-      if(shouldRetry){
-        clearTimeout(v3SaveTimer);
-        v3SaveTimer=setTimeout(v3SyncNow,250);
-      }
+      if(shouldRetry){clearTimeout(v3SaveTimer);v3SaveTimer=setTimeout(v3SyncNow,300);}
     }
   }
 }
@@ -3334,86 +3450,258 @@ window.v3QueueCloudSave=function(){
 };
 
 async function v3SubscribeItems(){
+  if(!V3_TIMELINE_ID) return;
   const col=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items');
   let first;
-  try{
-    first=await col.get();
-  }catch(e){
-    v3CloudError('lecture initiale',e);
-    v3Ready=true;
-    return;
-  }
+  try{first=await col.get({source:'server'});}
+  catch(e){v3CloudError('lecture initiale',e);v3Ready=true;return;}
 
-  // Au démarrage, le cloud est la source de vérité. Cela évite de renvoyer
-  // d'anciennes données de démonstration conservées dans le navigateur.
   const firstItems=first.docs.map(d=>({id:d.id,...d.data()}));
   v3CloudIds=new Set(firstItems.map(x=>x.id));
+  v3CloudMap=new Map(firstItems.map(x=>[x.id,x]));
   v3ApplyItems(firstItems);
 
   if(v3ItemsUnsub) v3ItemsUnsub();
   v3ItemsUnsub=col.onSnapshot(snap=>{
     const items=snap.docs.map(d=>({id:d.id,...d.data()}));
-
-    // Point clé V3.0.5 : si une fiche vient d'être modifiée localement,
-    // on n'applique PAS un instantané cloud plus ancien qui pourrait la faire
-    // disparaître avant son envoi. C'était la cause des ajouts invisibles.
-    if(v3LocalDirty || v3Syncing){
-      v3State('Synchronisation…','wait');
-      return;
-    }
-
+    if(v3LocalDirty || v3Syncing){v3State('Synchronisation…','wait');return;}
     v3CloudIds=new Set(items.map(x=>x.id));
+    v3CloudMap=new Map(items.map(x=>[x.id,x]));
     v3ApplyItems(items);
     v3ClearCloudError();
     v3State('En ligne','ok');
-  },err=>{
-    v3CloudError('lecture temps réel',err);
-  });
-  v3Ready=true;
+  },err=>v3CloudError('lecture temps réel',err));
 
-  // Si une modification locale a été faite pendant l'initialisation,
-  // l'envoyer maintenant au lieu de la perdre.
+  v3Ready=true;
   if(v3LocalDirty && v3CanEdit()) v3SyncNow();
 }
 
-async function v3CreateAccessRequest(){
-  if(!v3User) return;
-  await v3Db.collection('accessRequests').doc(v3User.uid).set({
-    uid:v3User.uid,
-    email:v3User.email||'',
-    status:'pending',
-    requestedAt:firebase.firestore.FieldValue.serverTimestamp()
+function v4RandomId(prefix='t'){
+  return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);
+}
+function v4InviteCode(){
+  const words=['ABRAHAM','MOISE','DAVID','ESTHER','PAUL','SILO','CEDRE','SION'];
+  const w=words[Math.floor(Math.random()*words.length)];
+  const tail=Math.random().toString(36).slice(2,6).toUpperCase().replace(/[01IO]/g,'7');
+  return w+'-'+tail;
+}
+async function v4SaveUserTimelineRef(tid,name,role){
+  await v3Db.collection('users').doc(v3User.uid).collection('timelines').doc(tid).set({
+    timelineId:tid,name:name||'Frise biblique',role:role||'visitor',
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true});
 }
-
-async function v3ResolveRole(){
-  if(!v3User) return null;
-  if(v3User.uid===V3_ADMIN_UID) return 'admin';
-  const snap=await v3Db.collection('users').doc(v3User.uid).get();
-  if(snap.exists && ['editor','visitor'].includes(snap.data().role)) return snap.data().role;
-  return null;
+async function v4LoadTimelineRefs(){
+  const snap=await v3Db.collection('users').doc(v3User.uid).collection('timelines').get();
+  v4TimelineRefs=snap.docs.map(d=>({id:d.id,...d.data()}));
+  return v4TimelineRefs;
 }
+async function v4ReadMembership(tid){
+  const s=await v3Db.collection('timelines').doc(tid).collection('members').doc(v3User.uid).get();
+  return s.exists?{id:s.id,...s.data()}:null;
+}
+
+async function v4TryLegacyMigration(){
+  // Nicolas : ancienne frise familiale -> administrateur.
+  if(v3User.uid===V4_LEGACY_ADMIN_UID){
+    const tref=v3Db.collection('timelines').doc(V4_LEGACY_TIMELINE_ID);
+    const t=await tref.get();
+    if(!t.exists){
+      await tref.set({
+        name:'Ma frise biblique',ownerUid:v3User.uid,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.1.0'
+      });
+    }
+    const mref=tref.collection('members').doc(v3User.uid);
+    const m=await mref.get();
+    if(!m.exists){
+      await mref.set({uid:v3User.uid,email:v3User.email||'',role:'admin',
+        joinedAt:firebase.firestore.FieldValue.serverTimestamp(),legacyMigration:true});
+    }
+    await v4SaveUserTimelineRef(V4_LEGACY_TIMELINE_ID,'Ma frise biblique','admin');
+    return true;
+  }
+
+  // Les anciens comptes déjà approuvés se migrent eux-mêmes.
+  try{
+    const legacy=await v3Db.collection('users').doc(v3User.uid).get();
+    const lr=legacy.exists?legacy.data().role:null;
+    if(['editor','visitor'].includes(lr)){
+      const tref=v3Db.collection('timelines').doc(V4_LEGACY_TIMELINE_ID);
+      const t=await tref.get();
+      if(t.exists){
+        const mref=tref.collection('members').doc(v3User.uid);
+        const m=await mref.get();
+        if(!m.exists){
+          await mref.set({uid:v3User.uid,email:v3User.email||'',role:lr,
+            joinedAt:firebase.firestore.FieldValue.serverTimestamp(),legacyMigration:true});
+        }
+        await v4SaveUserTimelineRef(V4_LEGACY_TIMELINE_ID,(t.data().name||'Ma frise biblique'),lr);
+        return true;
+      }
+    }
+  }catch(e){console.warn('[V4 migration legacy]',e);}
+  return false;
+}
+
+async function v4CreateTimeline(name){
+  name=(name||'').trim();
+  if(!name) throw new Error('Donne un nom à la frise.');
+  const tid=v4RandomId('timeline');
+  const tref=v3Db.collection('timelines').doc(tid);
+  await tref.set({
+    name,ownerUid:v3User.uid,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.1.0'
+  });
+  await tref.collection('members').doc(v3User.uid).set({
+    uid:v3User.uid,email:v3User.email||'',role:'admin',
+    joinedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await v4SaveUserTimelineRef(tid,name,'admin');
+  await v4LoadTimelineRefs();
+  await v4SelectTimeline(tid);
+  return tid;
+}
+
+async function v4JoinTimeline(code){
+  code=(code||'').trim().toUpperCase().replace(/\s+/g,'');
+  if(!code) throw new Error('Entre le code d’invitation.');
+  const inv=await v3Db.collection('invites').doc(code).get();
+  if(!inv.exists) throw new Error('Code d’invitation introuvable.');
+  const d=inv.data();
+  if(d.active===false) throw new Error('Ce code d’invitation n’est plus actif.');
+  if(!d.timelineId || !['editor','visitor'].includes(d.role)) throw new Error('Code d’invitation invalide.');
+
+  const tref=v3Db.collection('timelines').doc(d.timelineId);
+  const t=await tref.get();
+  if(!t.exists) throw new Error('La frise n’existe plus.');
+
+  await tref.collection('members').doc(v3User.uid).set({
+    uid:v3User.uid,email:v3User.email||'',role:d.role,inviteCode:code,
+    joinedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  const name=t.data().name||d.timelineName||'Frise biblique';
+  await v4SaveUserTimelineRef(d.timelineId,name,d.role);
+  await v4LoadTimelineRefs();
+  await v4SelectTimeline(d.timelineId);
+  return d.timelineId;
+}
+
+async function v4SelectTimeline(tid){
+  if(!tid) return;
+
+  // Ne jamais changer de frise en abandonnant une modification encore en attente.
+  if(V3_TIMELINE_ID && tid!==V3_TIMELINE_ID && v3LocalDirty && v3CanEdit()){
+    await v3SyncNow();
+    if(v3LocalDirty) throw new Error('Une modification est encore en attente de synchronisation. Réessaie dans un instant.');
+  }
+
+  if(v3ItemsUnsub){v3ItemsUnsub();v3ItemsUnsub=null;}
+  if(v3MembersUnsub){v3MembersUnsub();v3MembersUnsub=null;}
+  clearTimeout(v3SaveTimer);
+  v3Ready=false;v3LocalDirty=false;v3Syncing=false;v3ResyncRequested=false;
+  v3CloudIds=new Set();v3CloudMap=new Map();
+
+  const m=await v4ReadMembership(tid);
+  if(!m) throw new Error('Tu n’as pas accès à cette frise.');
+  const t=await v3Db.collection('timelines').doc(tid).get();
+  if(!t.exists) throw new Error('Cette frise n’existe plus.');
+
+  V3_TIMELINE_ID=tid;
+  v4CurrentMembership=m;
+  v3Role=m.role;
+  v4TimelineName=t.data().name||'Frise biblique';
+  localStorage.setItem('maFriseBiblique_lastTimeline',tid);
+  await v4SaveUserTimelineRef(tid,v4TimelineName,v3Role);
+  v3ApplyUi();
+  v3State('Connexion…','wait');
+  await v3SubscribeItems();
+  v4RenderTimelineLists();
+}
+
+async function v4BootstrapAfterLogin(){
+  await v4LoadTimelineRefs();
+  if(!v4TimelineRefs.length){
+    await v4TryLegacyMigration();
+    await v4LoadTimelineRefs();
+  }
+  if(!v4TimelineRefs.length) return false;
+
+  const last=localStorage.getItem('maFriseBiblique_lastTimeline');
+  let pick=v4TimelineRefs.find(x=>x.id===last)?.id || v4TimelineRefs[0].id;
+  try{await v4SelectTimeline(pick);}
+  catch(e){
+    // Supprime uniquement le raccourci cassé, jamais les données de la frise.
+    await v3Db.collection('users').doc(v3User.uid).collection('timelines').doc(pick).delete().catch(()=>{});
+    await v4LoadTimelineRefs();
+    if(!v4TimelineRefs.length) return false;
+    await v4SelectTimeline(v4TimelineRefs[0].id);
+  }
+  return true;
+}
+
+function v4ShowOnboarding(){
+  document.getElementById('v3LoginBox').style.display='none';
+  document.getElementById('v3PendingBox').style.display='block';
+  document.getElementById('v4OnboardingBox').style.display='block';
+  document.getElementById('v3AuthOverlay').classList.add('show');
+  v3State('À configurer','wait');
+}
+function v4OnboardingMsg(msg,error=false){
+  const el=document.getElementById('v4OnboardingMsg');
+  if(el){el.textContent=msg||'';el.style.color=error?'#b91c1c':'#475569';}
+}
+
 async function v3AfterLogin(user){
   v3User=user;
   try{
-    v3Role=await v3ResolveRole();
-    if(!v3Role){
-      await v3CreateAccessRequest();
-      v3ApplyUi();
+    let siteAccess=await v41GetSiteAccess();
+
+    // Les comptes historiques déjà autorisés restent autorisés.
+    if(!siteAccess && !v41IsSuperAdmin()){
+      try{
+        const legacy=await v3Db.collection('users').doc(v3User.uid).get();
+        const lr=legacy.exists?legacy.data().role:null;
+        if(lr==='editor' || lr==='visitor'){
+          await v3Db.collection('siteAccess').doc(v3User.uid).set({
+            uid:v3User.uid,email:v3User.email||'',status:'approved',
+            approvedBy:V4_LEGACY_ADMIN_UID,legacyMigration:true,
+            approvedAt:firebase.firestore.FieldValue.serverTimestamp()
+          });
+          siteAccess={status:'approved'};
+        }
+      }catch(e){}
+    }
+
+    if(!siteAccess && !v41IsSuperAdmin()){
+      await v41RequestSiteAccess();
+      siteAccess={status:'pending'};
+    }
+
+    if(!v41IsSuperAdmin() && (!siteAccess || siteAccess.status!=='approved')){
+      v3Role=null;v3ApplyUi();
       document.getElementById('v3LoginBox').style.display='none';
       document.getElementById('v3PendingBox').style.display='block';
+      document.getElementById('v4OnboardingBox').style.display='none';
+      const p=document.querySelector('#v3PendingBox .v3Pending');
+      if(p) p.innerHTML='<strong>⏳ Compte en attente d’autorisation</strong><br>Nicolas doit d’abord autoriser ton compte à utiliser le site. Ensuite tu pourras créer ta propre frise ou rejoindre une frise.';
       document.getElementById('v3AuthOverlay').classList.add('show');
       v3State('En attente','wait');
       return;
     }
-    v3ApplyUi();
+
+    const ok=await v4BootstrapAfterLogin();
+    if(!ok){v3Role=null;v3ApplyUi();v4ShowOnboarding();return;}
     document.getElementById('v3AuthOverlay').classList.remove('show');
     document.getElementById('v3LoginBox').style.display='block';
     document.getElementById('v3PendingBox').style.display='none';
-    await v3SubscribeItems();
   }catch(e){
-    v3CloudError('vérification des droits',e);
-    v3Message('Impossible de vérifier les droits d’accès : '+((e&&e.code)||'erreur inconnue'),true);
+    v3CloudError('initialisation du compte',e);
+    v3Message('Impossible d’ouvrir les frises : '+((e&&e.message)||'erreur inconnue'),true);
     document.getElementById('v3AuthOverlay').classList.add('show');
   }
 }
@@ -3430,6 +3718,7 @@ function v3FriendlyError(e){
   if(c.includes('weak-password')) return 'Choisis un mot de passe d’au moins 6 caractères.';
   if(c.includes('invalid-email')) return 'Adresse e-mail invalide.';
   if(c.includes('too-many-requests')) return 'Trop de tentatives. Réessaie un peu plus tard.';
+  if(c.includes('permission-denied')) return 'Les règles Firebase V4 ne sont probablement pas encore publiées.';
   return (e&&e.message)||'Une erreur est survenue.';
 }
 async function v3Login(){
@@ -3452,8 +3741,156 @@ async function v3Reset(){
 }
 async function v3Logout(){
   document.getElementById('v3AccountOverlay').classList.remove('show');
+  document.getElementById('v4TimelineOverlay').classList.remove('show');
   if(v3Auth) await v3Auth.signOut();
 }
+
+function v4RenderTimelineLists(){
+  const targets=['v4TimelineList','v4AccountTimelineList'];
+  for(const id of targets){
+    const box=document.getElementById(id); if(!box) continue;
+    box.innerHTML='';
+    if(!v4TimelineRefs.length){box.innerHTML='<p class="v3Sub">Aucune frise.</p>';continue;}
+    v4TimelineRefs.forEach(t=>{
+      const div=document.createElement('div');
+      div.className='v4TimelineItem '+(t.id===V3_TIMELINE_ID?'active':'');
+      div.innerHTML='<div class="v4TimelineMain"><strong>'+escapeHtml(t.name||'Frise biblique')+'</strong><small>'+escapeHtml(v3RoleLabel(t.role))+'</small></div>'+
+        (t.id===V3_TIMELINE_ID?'<span class="v3Role">Ouverte</span>':'<button type="button">Ouvrir</button>');
+      const btn=div.querySelector('button');
+      if(btn) btn.onclick=async()=>{try{await v4SelectTimeline(t.id);document.getElementById('v4TimelineOverlay').classList.remove('show');document.getElementById('v3AccountOverlay').classList.remove('show');}catch(e){alert(v3FriendlyError(e));}};
+      box.appendChild(div);
+    });
+  }
+}
+
+async function v4LoadMembers(){
+  const box=document.getElementById('v4MembersList'); if(!box || !V3_TIMELINE_ID || !v4IsAdmin()) return;
+  box.innerHTML='<p class="v3Sub">Chargement…</p>';
+  try{
+    const snap=await v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('members').get();
+    box.innerHTML='';
+    snap.docs.forEach(doc=>{
+      const m={id:doc.id,...doc.data()};
+      const isSelf=m.uid===v3User.uid;
+      const row=document.createElement('div');
+      row.className='v4Member';
+      row.innerHTML='<div class="v4MemberText"><strong>'+escapeHtml(m.email||m.uid)+'</strong><small>'+escapeHtml(v3RoleLabel(m.role))+(isSelf?' • vous':'')+'</small></div>';
+      if(!isSelf){
+        const sel=document.createElement('select');
+        sel.innerHTML='<option value="visitor">Visiteur</option><option value="editor">Éditeur</option><option value="admin">Administrateur</option>';
+        sel.value=m.role||'visitor';
+        sel.onchange=async()=>{await doc.ref.set({role:sel.value},{merge:true});};
+        row.appendChild(sel);
+        const del=document.createElement('button');
+        del.type='button';del.textContent='✕';del.title='Retirer';
+        del.style.cssText='border:0;border-radius:9px;padding:7px 9px;background:#fee2e2;color:#991b1b;font-weight:900';
+        del.onclick=async()=>{if(confirm('Retirer cette personne de la frise ?')){await doc.ref.delete();await v4LoadMembers();}};
+        row.appendChild(del);
+      }
+      box.appendChild(row);
+    });
+  }catch(e){box.innerHTML='<p class="v3Sub">Impossible de charger les membres.</p>';}
+}
+
+async function v4CreateInvite(){
+  if(!v4IsAdmin()) return;
+  const role=document.getElementById('v4InviteRole').value;
+  let code=v4InviteCode();
+  for(let i=0;i<4;i++){
+    const s=await v3Db.collection('invites').doc(code).get();
+    if(!s.exists) break;
+    code=v4InviteCode();
+  }
+  await v3Db.collection('invites').doc(code).set({
+    code,timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,role,active:true,
+    createdBy:v3User.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  const box=document.getElementById('v4InviteResult');
+  box.style.display='block';
+  box.innerHTML='Code à transmettre :<span class="v4InviteCode">'+escapeHtml(code)+'</span>'+
+    'La personne choisit <strong>Rejoindre une frise</strong> puis saisit ce code.';
+}
+
+function v4OpenSimple(mode){
+  const ov=document.getElementById('v4SimpleActionOverlay');
+  const title=document.getElementById('v4SimpleTitle');
+  const sub=document.getElementById('v4SimpleSub');
+  const label=document.getElementById('v4SimpleLabel');
+  const input=document.getElementById('v4SimpleInput');
+  const msg=document.getElementById('v4SimpleMsg');
+  msg.textContent=''; input.value='';
+  if(mode==='create'){
+    title.textContent='＋ Créer une frise';
+    sub.textContent='Elle sera vierge et indépendante des autres.';
+    label.firstChild.nodeValue='Nom de la frise ';
+    input.placeholder='Ex. Chronologie de Marc';
+    input.maxLength=80;
+  }else{
+    title.textContent='🔗 Rejoindre une frise';
+    sub.textContent='Entre le code donné par son administrateur.';
+    label.firstChild.nodeValue='Code d’invitation ';
+    input.placeholder='Ex. ABRAHAM-7K4P';
+    input.maxLength=24;
+  }
+  ov.dataset.mode=mode;ov.classList.add('show');setTimeout(()=>input.focus(),100);
+}
+
+async function v4SimpleConfirm(){
+  const ov=document.getElementById('v4SimpleActionOverlay');
+  const mode=ov.dataset.mode;
+  const input=document.getElementById('v4SimpleInput');
+  const msg=document.getElementById('v4SimpleMsg');
+  try{
+    msg.textContent=mode==='create'?'Création…':'Connexion…';
+    if(mode==='create') await v4CreateTimeline(input.value);
+    else await v4JoinTimeline(input.value);
+    ov.classList.remove('show');
+    document.getElementById('v4TimelineOverlay').classList.remove('show');
+    document.getElementById('v3AccountOverlay').classList.remove('show');
+  }catch(e){msg.textContent=v3FriendlyError(e);msg.style.color='#b91c1c';}
+}
+
+function v4OpenTimelineChooser(){
+  if(!v3User || !V3_TIMELINE_ID) return;
+  v4RenderTimelineLists();
+  document.getElementById('v4TimelineOverlay').classList.add('show');
+}
+
+
+async function v41LoadAccessRequests(){
+  const box=document.getElementById('v41AccessRequests');
+  if(!box || !v41IsSuperAdmin()) return;
+  box.innerHTML='<p class="v3Sub">Chargement…</p>';
+  try{
+    const snap=await v3Db.collection('siteAccess').where('status','==','pending').get();
+    box.innerHTML='';
+    if(snap.empty){box.innerHTML='<p class="v3Sub">Aucune demande en attente.</p>';return;}
+    snap.docs.forEach(doc=>{
+      const d=doc.data();
+      const row=document.createElement('div');
+      row.className='v4Member';
+      row.innerHTML='<div class="v4MemberText"><strong>'+escapeHtml(d.email||d.uid||doc.id)+'</strong><small>Demande d’accès au site</small></div>';
+      const ok=document.createElement('button');
+      ok.type='button';ok.textContent='Autoriser';
+      ok.style.cssText='border:0;border-radius:9px;padding:8px 10px;background:#dcfce7;color:#166534;font-weight:900';
+      ok.onclick=async()=>{
+        await doc.ref.set({status:'approved',approvedBy:v3User.uid,approvedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+        await v41LoadAccessRequests();
+      };
+      const no=document.createElement('button');
+      no.type='button';no.textContent='Refuser';
+      no.style.cssText='border:0;border-radius:9px;padding:8px 10px;background:#fee2e2;color:#991b1b;font-weight:900';
+      no.onclick=async()=>{
+        if(confirm('Refuser l’accès de ce compte au site ?')){
+          await doc.ref.set({status:'rejected',rejectedBy:v3User.uid,rejectedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+          await v41LoadAccessRequests();
+        }
+      };
+      row.appendChild(ok);row.appendChild(no);box.appendChild(row);
+    });
+  }catch(e){box.innerHTML='<p class="v3Sub">Impossible de charger les demandes.</p>';}
+}
+
 function v3OpenAccount(){
   if(!v3User){document.getElementById('v3AuthOverlay').classList.add('show');return;}
   document.getElementById('v3AccountEmail').textContent=v3User.email||'';
@@ -3462,53 +3899,58 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 3.4.1</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 4.1</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 3.4.1</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 4.1</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
-  document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
+  v4RenderTimelineLists();
+  const sab=document.getElementById('v41SiteAdminBox');
+  if(sab) sab.style.display=v41IsSuperAdmin()?'block':'none';
+  if(v41IsSuperAdmin()) v41LoadAccessRequests();
+  document.getElementById('v4AdminTimelineBox').style.display=v4IsAdmin()?'block':'none';
+  document.getElementById('v4InviteResult').style.display='none';
   document.getElementById('v3AccountOverlay').classList.add('show');
-  if(v3Role==='admin') v3WatchRequests();
+  if(v4IsAdmin()) v4LoadMembers();
 }
-function v3WatchRequests(){
-  if(v3RequestsUnsub) v3RequestsUnsub();
-  v3RequestsUnsub=v3Db.collection('accessRequests').onSnapshot(snap=>{
-    const box=document.getElementById('v3RequestsList');
-    box.innerHTML='';
-    if(snap.empty){
-      box.innerHTML='<p class="v3Sub">Aucune demande en attente.</p>';
-      return;
-    }
-    snap.docs.forEach(d=>{
-      const r={id:d.id,...d.data()};
-      const div=document.createElement('div');
-      div.className='v3Request';
-      div.innerHTML='<strong>'+escapeHtml(r.email||r.uid)+'</strong>'+
-        '<small>Demande d’accès</small>'+
-        '<div class="v3ReqActions">'+
-        '<button class="v3Visitor" type="button">👁 Visiteur</button>'+
-        '<button class="v3Editor" type="button">✏️ Éditeur</button>'+
-        '<button class="v3Reject" type="button">Refuser</button></div>';
-      div.querySelector('.v3Visitor').onclick=()=>v3Approve(r,'visitor');
-      div.querySelector('.v3Editor').onclick=()=>v3Approve(r,'editor');
-      div.querySelector('.v3Reject').onclick=()=>v3Reject(r);
-      box.appendChild(div);
-    });
-  },e=>console.error(e));
-}
-async function v3Approve(r,role){
-  if(v3Role!=='admin') return;
-  await v3Db.collection('users').doc(r.uid).set({
-    email:r.email||'', role,
-    approvedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    approvedBy:v3User.uid
-  },{merge:true});
-  await v3Db.collection('accessRequests').doc(r.uid).delete();
-}
-async function v3Reject(r){
-  if(v3Role!=='admin') return;
-  await v3Db.collection('accessRequests').doc(r.uid).delete();
+
+function v4BindUi(){
+  document.getElementById('v4TimelineTitle').onclick=v4OpenTimelineChooser;
+  document.getElementById('v4TimelineClose').onclick=()=>document.getElementById('v4TimelineOverlay').classList.remove('show');
+  document.getElementById('v4OverlayCreateBtn').onclick=()=>v4OpenSimple('create');
+  document.getElementById('v4OverlayJoinBtn').onclick=()=>v4OpenSimple('join');
+  document.getElementById('v4AccountCreateBtn').onclick=()=>v4OpenSimple('create');
+  document.getElementById('v4AccountJoinBtn').onclick=()=>v4OpenSimple('join');
+  document.getElementById('v4SimpleCancel').onclick=()=>document.getElementById('v4SimpleActionOverlay').classList.remove('show');
+  document.getElementById('v4SimpleConfirm').onclick=v4SimpleConfirm;
+  document.getElementById('v4CreateInviteBtn').onclick=async()=>{try{await v4CreateInvite();}catch(e){alert(v3FriendlyError(e));}};
+
+  document.getElementById('v4StartCreateBtn').onclick=()=>{
+    document.getElementById('v4OnboardingCreate').style.display='block';
+    document.getElementById('v4OnboardingJoin').style.display='none';
+  };
+  document.getElementById('v4StartJoinBtn').onclick=()=>{
+    document.getElementById('v4OnboardingJoin').style.display='block';
+    document.getElementById('v4OnboardingCreate').style.display='none';
+  };
+  document.getElementById('v4FirstCreateConfirm').onclick=async()=>{
+    try{
+      v4OnboardingMsg('Création…');
+      await v4CreateTimeline(document.getElementById('v4FirstTimelineName').value);
+      document.getElementById('v3AuthOverlay').classList.remove('show');
+      document.getElementById('v3PendingBox').style.display='none';
+      document.getElementById('v3LoginBox').style.display='block';
+    }catch(e){v4OnboardingMsg(v3FriendlyError(e),true);}
+  };
+  document.getElementById('v4FirstJoinConfirm').onclick=async()=>{
+    try{
+      v4OnboardingMsg('Connexion…');
+      await v4JoinTimeline(document.getElementById('v4FirstJoinCode').value);
+      document.getElementById('v3AuthOverlay').classList.remove('show');
+      document.getElementById('v3PendingBox').style.display='none';
+      document.getElementById('v3LoginBox').style.display='block';
+    }catch(e){v4OnboardingMsg(v3FriendlyError(e),true);}
+  };
 }
 
 function initV3(){
@@ -3519,6 +3961,7 @@ function initV3(){
   document.getElementById('v3LogoutBtn').onclick=v3Logout;
   document.getElementById('accountBtn').onclick=v3OpenAccount;
   document.getElementById('v3AccountClose').onclick=()=>document.getElementById('v3AccountOverlay').classList.remove('show');
+  v4BindUi();
 
   if(!v3ConfigReady()){
     document.getElementById('v3SetupBox').style.display='block';
@@ -3535,17 +3978,16 @@ function initV3(){
 
   v3Auth.onAuthStateChanged(user=>{
     if(v3ItemsUnsub){v3ItemsUnsub();v3ItemsUnsub=null;}
-    v3Ready=false;v3CloudIds=new Set();v3LocalDirty=false;v3Syncing=false;v3ResyncRequested=false;clearTimeout(v3SaveTimer);
+    if(v3MembersUnsub){v3MembersUnsub();v3MembersUnsub=null;}
+    v3Ready=false;v3CloudIds=new Set();v3CloudMap=new Map();v3LocalDirty=false;v3Syncing=false;v3ResyncRequested=false;clearTimeout(v3SaveTimer);
     if(!user){
-      v3User=null;v3Role=null;
-      window.__V3_CONNECTED=false;
-      window.__V3_CAN_EDIT=true;
+      v3User=null;v3Role=null;v4TimelineRefs=[];v4CurrentMembership=null;
+      window.__V3_CONNECTED=false;window.__V3_CAN_EDIT=true;
       document.body.classList.remove('v3ReadOnly');
       document.getElementById('v3LoginBox').style.display='block';
       document.getElementById('v3PendingBox').style.display='none';
       document.getElementById('v3AuthOverlay').classList.add('show');
-      v3ApplyUi();
-      v3State('Déconnecté','off');
+      v3ApplyUi();v3State('Déconnecté','off');
       return;
     }
     v3AfterLogin(user);
@@ -3553,8 +3995,7 @@ function initV3(){
 }
 
 
-
-// V3.4 — commandes compactes, pensées d'abord pour le téléphone.
+// V4.1 — commandes compactes, pensées d'abord pour le téléphone.
 function v33CloseMenu(){ document.getElementById('v33Menu')?.classList.remove('open'); }
 function v33InitCompactUi(){
   const panel=document.getElementById('v33SearchPanel');
