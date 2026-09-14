@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Ma frise biblique — V3.3 connectée</title>
+<title>Ma frise biblique — V3.4 connectée</title>
 <style>
 :root{
   --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
@@ -320,7 +320,7 @@ textarea{min-height:76px;resize:vertical}
 }
 .dataToolbar .chip{margin:0}
 
-/* ===== V3.3 connectée ===== */
+/* ===== V3.4 connectée ===== */
 .v3State{
   flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
   background:#334155;color:#e2e8f0;white-space:nowrap
@@ -395,7 +395,7 @@ body.v3ReadOnly .importBtn{display:none!important}
 
 
 
-/* ===== V3.3 — refonte visuelle mobile ===== */
+/* ===== V3.4 — refonte visuelle mobile ===== */
 html,body{height:100%;height:100dvh}
 body{display:flex;flex-direction:column;background:#0b1323}
 .v33Header{height:54px;min-height:54px;padding:0 10px;gap:7px;background:linear-gradient(180deg,#101b30,#0d1728);box-shadow:0 2px 12px rgba(0,0,0,.18);z-index:40}
@@ -419,6 +419,12 @@ body{display:flex;flex-direction:column;background:#0b1323}
 #stageWrap{flex:1 1 auto;min-height:0;height:auto!important;background:#fbfcfe;border-top:1px solid #dfe6ef}
 .addMain{min-height:46px;padding:0 15px!important;font-size:20px;box-shadow:0 8px 22px rgba(22,103,217,.28)!important}.addMain span{font-size:13px}.fab{right:12px;bottom:max(14px,env(safe-area-inset-bottom))}
 @media(max-width:390px){.v33Header h1 span{display:none}.v33Header h1{flex:0 0 auto}.v33Header{gap:6px}}
+
+/* ===== V3.4 — zoom profond + finitions visuelles ===== */
+:root{--side:88px}
+.addMain{min-height:42px!important;padding:0 13px!important;font-size:18px!important}.addMain span{font-size:12px!important}
+.fab{right:10px!important;bottom:max(12px,env(safe-area-inset-bottom))!important}
+@media(max-width:430px){.v33Search{margin:5px 7px!important}.v33Header{height:52px;min-height:52px}.v33IconBtn{width:36px;height:36px;flex-basis:36px}}
 
 </style>
 
@@ -1078,7 +1084,7 @@ let centerYear=-1000;
 let pxPerYear=2.3;
 let offsetY=0;
 
-const TIMELINE_SIDE_W=96;
+const TIMELINE_SIDE_W=88;
 function yearToX(year){
   const usable=Math.max(1,wrap.clientWidth-TIMELINE_SIDE_W);
   return TIMELINE_SIDE_W + usable/2 + (year-centerYear)*pxPerYear;
@@ -1093,6 +1099,48 @@ function formatYear(y){
   if(yr===0) return '1 de n. è.';
   return yr+' de n. è.';
 }
+
+
+function daysInHistYear(histYear){
+  const a=safeCivilDate(histYear,1,1), b=safeCivilDate(histYear+1===0?1:histYear+1,1,1);
+  const diff=Math.round((b-a)/86400000);
+  return (diff>=365&&diff<=366)?diff:365;
+}
+function civilDayOfYear(histYear,month,day){
+  const a=safeCivilDate(histYear,1,1), d=safeCivilDate(histYear,month,day);
+  return Math.round((d-a)/86400000);
+}
+function civilToTimelinePos(c){
+  if(!c||!Number.isFinite(Number(c.year))||!Number.isFinite(Number(c.month))||!Number.isFinite(Number(c.day))) return null;
+  const y=Number(c.year), doy=civilDayOfYear(y,Number(c.month),Number(c.day));
+  return y + doy/daysInHistYear(y);
+}
+function preciseDataForItem(o,which='start'){
+  const pd=o?.preciseDates||{};
+  if(o?.entityKind==='book') return which==='start'?(pd.coverStart||pd.writeStart||null):(pd.coverEnd||pd.writeEnd||null);
+  if(o?.entityKind==='event') return which==='start'?(pd.start||o.preciseDate||null):(pd.end||null);
+  return which==='start'?(pd.start||null):(pd.end||null);
+}
+function itemStartPos(o){
+  const d=preciseDataForItem(o,'start'); const p=civilToTimelinePos(d?.civil);
+  if(p!==null) return p;
+  return Number(o?.year!==undefined?o.year:o?.start);
+}
+function itemEndPos(o){
+  const d=preciseDataForItem(o,'end'); const p=civilToTimelinePos(d?.civil);
+  if(p!==null) return p;
+  if(o?.year!==undefined) return itemStartPos(o);
+  return Number(o?.end);
+}
+function timelinePosToCivil(pos){
+  let y=Math.floor(pos);
+  if(y===0) y=1;
+  let frac=pos-Math.floor(pos); if(frac<0) frac+=1;
+  const days=daysInHistYear(y), idx=Math.max(0,Math.min(days-1,Math.floor(frac*days)));
+  const d=safeCivilDate(y,1,1); d.setUTCDate(1+idx);
+  return {year:astronomicalToHist(d.getUTCFullYear()),month:d.getUTCMonth()+1,day:d.getUTCDate(),date:d};
+}
+function shortMonth(m){return ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'][m-1]||''}
 
 function certaintyLabel(value){
   if(value==='exact') return 'exacte';
@@ -1144,8 +1192,10 @@ function layoutKind(o){
 }
 
 function itemRange(o){
-  if(o.year!==undefined) return {start:o.year-8,end:o.year+8};
-  return {start:Number(o.start),end:Number(o.end)};
+  const a=itemStartPos(o), b=itemEndPos(o);
+  const pad=Math.max(0.006,Math.min(8,150/Math.max(.25,pxPerYear)));
+  if(o.year!==undefined || o.eventMode==='point') return {start:a-pad,end:a+pad};
+  return {start:Math.min(a,b),end:Math.max(a,b)};
 }
 
 function assignLanes(items,firstY,rowGap){
@@ -1253,7 +1303,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.3.0',
+    appVersion:'3.4.0',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -1549,7 +1599,7 @@ function preciseDateLabel(o){
 }
 
 
-// V3.3 — dates précises + refonte visuelle mobile.
+// V3.4 — dates précises + refonte visuelle mobile.
 const PRECISE_DATE_FIELDS={
   pStart:{yearId:'pStartYear',eraId:'pStartEra',afterId:'pStartCert',title:'Naissance / début de vie'},
   pEnd:{yearId:'pEndYear',eraId:'pEndEra',afterId:'pEndCert',title:'Mort / fin de vie'},
@@ -2358,12 +2408,73 @@ function resize(){
 addEventListener('resize',resize);
 
 function niceStep(){
+  if(pxPerYear>60) return 1;
   if(pxPerYear>8) return 10;
   if(pxPerYear>4) return 25;
   if(pxPerYear>2) return 50;
   if(pxPerYear>1) return 100;
   if(pxPerYear>.5) return 200;
   return 500;
+}
+
+function drawAdaptiveTimeGrid(w,h){
+  const left=xToYear(TIMELINE_SIDE_W), right=xToYear(w);
+  // Years / centuries
+  if(pxPerYear<90){
+    const step=niceStep();
+    const minorStep=step>=100?step/5:step>=50?10:step>=20?5:step>=10?2:1;
+    const start=Math.floor(left/minorStep)*minorStep-minorStep, end=Math.ceil(right/minorStep)*minorStep+minorStep;
+    for(let y=start;y<=end;y+=minorStep){
+      if(Math.abs((y/step)-Math.round(y/step))<.001) continue;
+      const x=yearToX(y); ctx.strokeStyle='rgba(203,213,225,.26)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x,34);ctx.lineTo(x,h);ctx.stroke();
+    }
+    ctx.font='700 12px system-ui';ctx.textAlign='center';
+    for(let y=Math.floor(left/step)*step-step;y<=Math.ceil(right/step)*step+step;y+=step){
+      const x=yearToX(y);ctx.strokeStyle='rgba(148,163,184,.58)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x,30);ctx.lineTo(x,h);ctx.stroke();ctx.fillStyle='#475569';ctx.fillText(formatYear(y),x,19);
+      ctx.fillStyle='#94a3b8';ctx.fillRect(x-1,25,2,6);
+    }
+    return;
+  }
+
+  // Month / week / day scales.  The exact position uses the stored civil equivalent,
+  // while the most detailed label also shows the Hebrew date.
+  let cur=timelinePosToCivil(left-.1); let d=safeCivilDate(cur.year,cur.month,1); d.setUTCMonth(d.getUTCMonth()-1);
+  const endPos=right+.1;
+  for(let guard=0;guard<60;guard++){
+    const hy=astronomicalToHist(d.getUTCFullYear()), m=d.getUTCMonth()+1;
+    const mp=civilToTimelinePos({year:hy,month:m,day:1}); if(mp>endPos) break;
+    const x=yearToX(mp);
+    ctx.strokeStyle='rgba(100,116,139,.42)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,28);ctx.lineTo(x,h);ctx.stroke();
+    ctx.fillStyle='#475569';ctx.textAlign='left';ctx.font='800 11px system-ui';
+    if(x>TIMELINE_SIDE_W-15&&x<w-45) ctx.fillText(shortMonth(m)+(m===1?' '+formatYear(hy):''),x+4,18);
+    d.setUTCMonth(d.getUTCMonth()+1);
+  }
+
+  if(pxPerYear>=650){
+    const c0=timelinePosToCivil(left-.03); let dd=safeCivilDate(c0.year,c0.month,c0.day); dd.setUTCDate(dd.getUTCDate()-8);
+    const maxDays=Math.min(500,Math.ceil((right-left)*367)+20);
+    const daySpacing=pxPerYear/365.25;
+    const daily=daySpacing>=10;
+    for(let i=0;i<maxDays;i++){
+      const hy=astronomicalToHist(dd.getUTCFullYear()), mo=dd.getUTCMonth()+1, da=dd.getUTCDate();
+      const pos=civilToTimelinePos({year:hy,month:mo,day:da}); if(pos>endPos) break;
+      const isWeek=(dd.getUTCDay()===1), drawLine=daily||isWeek;
+      if(drawLine){
+        const x=yearToX(pos);ctx.strokeStyle=daily?'rgba(203,213,225,.24)':'rgba(148,163,184,.30)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(x,29);ctx.lineTo(x,h);ctx.stroke();
+      }
+      if(daily&&daySpacing>=18){
+        const x=yearToX(pos); if(x>TIMELINE_SIDE_W+3&&x<w-20){
+          const hp=hebrewParts(dd);
+          ctx.textAlign='center';ctx.fillStyle='#334155';ctx.font='800 10px system-ui';ctx.fillText(String(hp.day),x,18);
+          ctx.fillStyle='#8290a3';ctx.font='700 8px system-ui';ctx.fillText(hp.month,x,27);
+        }
+      }
+      dd.setUTCDate(dd.getUTCDate()+1);
+    }
+  }
 }
 
 function draw(){
@@ -2376,34 +2487,19 @@ function draw(){
   ctx.fillStyle='#eef2f7';ctx.fillRect(0,0,TIMELINE_SIDE_W,h);
   ctx.save();ctx.beginPath();ctx.rect(TIMELINE_SIDE_W,0,w-TIMELINE_SIDE_W,h);ctx.clip();
 
-  const step=niceStep();
-  const minorStep = step>=100 ? step/5 : step>=50 ? 10 : step>=20 ? 5 : step>=10 ? 2 : 1;
-  const leftYear=xToYear(0), rightYear=xToYear(w);
-  const start=Math.floor(leftYear/minorStep)*minorStep-minorStep;
-  const end=Math.ceil(rightYear/minorStep)*minorStep+minorStep;
+  // Soft category bands make long timelines easier to follow.
+  const bandDefs=[
+    ['persons','#2563eb',sectionY.persons,sectionY.reigns],
+    ['reigns','#8b5cf6',sectionY.reigns,sectionY.books],
+    ['books','#14b8a6',sectionY.books,sectionY.events],
+    ['events','#f59e0b',sectionY.events,sectionY.bottom]
+  ];
+  bandDefs.forEach(([,color,a,b],i)=>{
+    const y1=Math.max(32,a+offsetY-23), y2=Math.min(h,b+offsetY-24);
+    if(y2>y1){ctx.globalAlpha=.035;ctx.fillStyle=color;ctx.fillRect(TIMELINE_SIDE_W,y1,w-TIMELINE_SIDE_W,y2-y1);ctx.globalAlpha=1;}
+  });
 
-  // Subtle minor grid
-  for(let y=start;y<=end;y+=minorStep){
-    if(Math.abs((y/step)-Math.round(y/step))<0.001) continue;
-    const x=yearToX(y);
-    ctx.strokeStyle='rgba(203,213,225,.38)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(x,34);ctx.lineTo(x,h);ctx.stroke();
-  }
-
-  // Major grid + labels
-  ctx.font='700 12px system-ui';
-  ctx.textAlign='center';
-  const majorStart=Math.floor(leftYear/step)*step-step;
-  const majorEnd=Math.ceil(rightYear/step)*step+step;
-  for(let y=majorStart;y<=majorEnd;y+=step){
-    const x=yearToX(y);
-    ctx.strokeStyle='#cbd5e1';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(x,32);ctx.lineTo(x,h);ctx.stroke();
-    ctx.fillStyle='#475569';
-    ctx.fillText(formatYear(y),x,21);
-    ctx.fillStyle='#94a3b8';
-    ctx.fillRect(x-1,27,2,6);
-  }
+  drawAdaptiveTimeGrid(w,h);
 
   // Section separators for easier reading
   [sectionY.reigns-22,sectionY.books-22,sectionY.events-22].forEach(base=>{
@@ -2432,8 +2528,8 @@ function drawSectionLabel(text,y,color){
   if(yy<-24||yy>wrap.clientHeight+24) return;
   ctx.fillStyle=color||'#64748b';
   ctx.beginPath();ctx.roundRect(7,yy-16,TIMELINE_SIDE_W-14,26,8);ctx.fill();
-  ctx.font='800 10px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff';
-  ctx.fillText(text,13,yy+1);
+  ctx.font='800 9px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff';
+  ctx.fillText(text,10,yy+1);
 }
 
 
@@ -2464,7 +2560,7 @@ function certaintyText(c,year){
 }
 
 function drawBar(r){
-  const x1=yearToX(r.start), x2=yearToX(r.end);
+  const x1=yearToX(itemStartPos(r)), x2=yearToX(itemEndPos(r));
   const y=r.y+offsetY, hh=28;
   if(y>wrap.clientHeight+40 || y<-50 || x2<-100 || x1>wrap.clientWidth+100) return;
 
@@ -2502,7 +2598,7 @@ function drawBar(r){
 }
 
 function drawPoint(p){
-  const x=yearToX(p.year), y=p.y+offsetY;
+  const x=yearToX(itemStartPos(p)), y=p.y+offsetY;
   if(x<-120||x>wrap.clientWidth+120||y<0||y>wrap.clientHeight) return;
 
   // Event marker: slim stem + flag-like diamond, clearer at a glance.
@@ -2562,10 +2658,11 @@ wrap.addEventListener('pointermove',e=>{
     const a=arr[0],b=arr[1];
     const d=Math.hypot(a.x-b.x,a.y-b.y);
     const ratio=d/pinchStartDist;
-    pxPerYear=Math.max(.25,Math.min(14,pinchStartScale*ratio));
+    pxPerYear=Math.max(.25,Math.min(12000,pinchStartScale*ratio));
 
     // keep the year under the original pinch midpoint stable
-    centerYear = pinchAnchorYear - (pinchMidX-wrap.clientWidth/2)/pxPerYear;
+    const usable=Math.max(1,wrap.clientWidth-TIMELINE_SIDE_W);
+    centerYear = pinchAnchorYear - (pinchMidX-(TIMELINE_SIDE_W+usable/2))/pxPerYear;
     moved=true;
     draw();
   }
@@ -3003,7 +3100,7 @@ function v3CloudError(where,e){
   const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
   v3LastCloudErrorWhere=where||'Firebase';
   v3LastCloudError=code+' — '+msg;
-  console.error('[V3.3.0 '+v3LastCloudErrorWhere+']',e);
+  console.error('[V3.4.0 '+v3LastCloudErrorWhere+']',e);
   v3State('Erreur cloud ⚠️','off');
 }
 function v3ClearCloudError(){
@@ -3057,7 +3154,7 @@ function v3Cache(items){
     localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
       app:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.3.0',
+      appVersion:'3.4.0',
       updatedAt:new Date().toISOString(),
       timelineId:V3_TIMELINE_ID,
       items
@@ -3134,7 +3231,7 @@ async function v3SyncNow(){
     batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
       name:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.3.0',
+      appVersion:'3.4.0',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true});
@@ -3160,7 +3257,7 @@ async function v3SyncNow(){
           v3ApplyItems(freshItems);
         }
       }catch(e){
-        console.warn('[V3.3.0 relecture serveur]',e);
+        console.warn('[V3.4.0 relecture serveur]',e);
       }
     }
   }catch(e){
@@ -3315,9 +3412,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 3.3.0</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 3.4.0</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 3.3.0</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 3.4.0</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
   document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
@@ -3407,7 +3504,7 @@ function initV3(){
 
 
 
-// V3.3 — commandes compactes, pensées d'abord pour le téléphone.
+// V3.4 — commandes compactes, pensées d'abord pour le téléphone.
 function v33CloseMenu(){ document.getElementById('v33Menu')?.classList.remove('open'); }
 function v33InitCompactUi(){
   const panel=document.getElementById('v33SearchPanel');
