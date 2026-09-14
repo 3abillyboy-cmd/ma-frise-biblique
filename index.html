@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Ma frise biblique — V3.1 connectée</title>
+<title>Ma frise biblique — V3.1.1 connectée</title>
 <style>
 :root{
   --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
@@ -320,7 +320,7 @@ textarea{min-height:76px;resize:vertical}
 }
 .dataToolbar .chip{margin:0}
 
-/* ===== V3.1 connectée ===== */
+/* ===== V3.1.1 connectée ===== */
 .v3State{
   flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
   background:#334155;color:#e2e8f0;white-space:nowrap
@@ -1014,6 +1014,7 @@ let editingBookId=null;
 let draftActivities=[];
 
 let quickActionBusy=false;
+let quickCardOpenedAt=0;
 
 function stopCardPointerPropagation(e){
   e.stopPropagation();
@@ -1031,6 +1032,9 @@ function runQuickAction(e,fn){
     e.preventDefault();
     e.stopPropagation();
   }
+  // Sur mobile, le pointerup qui ouvre la fiche peut générer un « clic fantôme »
+  // sur un bouton qui vient juste d'apparaître sous le doigt.
+  if(performance.now()-quickCardOpenedAt<450) return;
   if(quickActionBusy) return;
   quickActionBusy=true;
   try{ fn(); }
@@ -1220,7 +1224,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.1',
+    appVersion:'3.2.0',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -1291,7 +1295,8 @@ function renderDraftActivities(){
   draftActivities.forEach((a,i)=>{
     const d=document.createElement('div');
     d.className='activityCard';
-    d.innerHTML='<strong>'+escapeHtml(a.label)+'</strong><br>'+formatYear(a.start)+' → '+formatYear(a.end)+
+    const ps=formatPreciseData(a.preciseDates?.start), pe=formatPreciseData(a.preciseDates?.end);
+    d.innerHTML='<strong>'+escapeHtml(a.label)+'</strong><br>'+(ps||formatYear(a.start))+' → '+(pe||formatYear(a.end))+
       (a.place ? '<br>📍 '+escapeHtml(a.place) : '')+
       (a.ref ? '<br>📖 '+escapeHtml(a.ref) : '')+
       '<br><button type="button" onclick="removeDraftActivity('+i+')">🗑 Retirer</button>';
@@ -1313,11 +1318,13 @@ function addDraftActivity(){
     startCert:document.getElementById('aStartCert').value,
     endCert:document.getElementById('aEndCert').value,
     place:document.getElementById('aPlace').value.trim(),
-    ref:document.getElementById('aRef').value.trim()
+    ref:document.getElementById('aRef').value.trim(),
+    preciseDates:{start:getGenericPreciseDateData('aStart'),end:getGenericPreciseDateData('aEnd')}
   });
   ['aLabel','aStartYear','aEndYear','aPlace','aRef'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('aStartCert').value='exact';
   document.getElementById('aEndCert').value='exact';
+  clearGenericPreciseDateData(['aStart','aEnd']);
   renderDraftActivities();
 }
 function removeDraftActivity(i){ draftActivities.splice(i,1); renderDraftActivities(); }
@@ -1344,6 +1351,7 @@ function openPersonForm(){
   removeEntityImage('p');
   draftActivities=[];
   renderDraftActivities();
+  clearGenericPreciseDateData(['pStart','pEnd','aStart','aEnd']);
   document.getElementById('personForm').style.display='block';
   document.getElementById('pName').focus();
 }
@@ -1511,6 +1519,98 @@ function preciseDateLabel(o){
   return parts.join('  ↔  ');
 }
 
+
+// V3.2 — jours/mois disponibles pour toutes les dates de la frise.
+const PRECISE_DATE_FIELDS={
+  pStart:{yearId:'pStartYear',eraId:'pStartEra',afterId:'pStartCert',title:'Naissance / début de vie'},
+  pEnd:{yearId:'pEndYear',eraId:'pEndEra',afterId:'pEndCert',title:'Mort / fin de vie'},
+  aStart:{yearId:'aStartYear',eraId:'aStartEra',afterId:'aStartCert',title:'Début de la période'},
+  aEnd:{yearId:'aEndYear',eraId:'aEndEra',afterId:'aEndCert',title:'Fin de la période'},
+  rStart:{yearId:'rStartYear',eraId:'rStartEra',afterId:'rStartCert',title:'Début du règne'},
+  rEnd:{yearId:'rEndYear',eraId:'rEndEra',afterId:'rEndCert',title:'Fin du règne'},
+  bCoverStart:{yearId:'bCoverStartYear',eraId:'bCoverStartEra',afterId:'bCoverStartCert',title:'Début de la période couverte'},
+  bCoverEnd:{yearId:'bCoverEndYear',eraId:'bCoverEndEra',afterId:'bCoverEndCert',title:'Fin de la période couverte'},
+  bWriteStart:{yearId:'bWriteStartYear',eraId:'bWriteStartEra',afterId:'bWriteStartCert',title:'Début de rédaction'},
+  bWriteEnd:{yearId:'bWriteEndYear',eraId:'bWriteEndEra',afterId:'bWriteEndCert',title:'Fin de rédaction'},
+  eEnd:{yearId:'eEndYear',eraId:'eEndEra',afterId:'eEndCert',title:'Fin de l’événement'}
+};
+function installPreciseDateControls(){
+  Object.entries(PRECISE_DATE_FIELDS).forEach(([key,cfg])=>{
+    if(document.getElementById(key+'PreciseBox')) return;
+    const anchor=document.getElementById(cfg.afterId); if(!anchor) return;
+    const host=anchor.closest('.formFull') || anchor.parentElement;
+    const box=document.createElement('div'); box.id=key+'PreciseBox'; box.className='preciseDateBox formFull';
+    box.innerHTML='<div class="preciseTitle">📅 Jour et mois — '+escapeHtml(cfg.title)+' (facultatif)</div>'+ 
+      '<div class="preciseGrid"><div><label>Je saisis en</label><select id="'+key+'PreciseCalendar"><option value="hebrew">Calendrier hébreu</option><option value="civil">Calendrier civil</option></select></div>'+ 
+      '<div><label>Jour</label><input id="'+key+'PreciseDay" type="number" min="1" max="31" inputmode="numeric" placeholder="14"></div>'+ 
+      '<div class="formFull" style="grid-column:1/-1"><label>Mois</label><select id="'+key+'PreciseMonth"></select></div></div>'+ 
+      '<div id="'+key+'PrecisePreview" class="precisePreview">Laisse vide si seul l’année est connue.</div>';
+    host.insertAdjacentElement('afterend',box);
+    [key+'PreciseCalendar',key+'PreciseDay',key+'PreciseMonth',cfg.yearId,cfg.eraId].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.addEventListener('input',()=>updateGenericPreciseDateUI(key));
+      if(el) el.addEventListener('change',()=>updateGenericPreciseDateUI(key));
+    });
+    updateGenericPreciseDateUI(key);
+  });
+}
+function updateGenericPreciseDateUI(key){
+  const cfg=PRECISE_DATE_FIELDS[key]; if(!cfg)return;
+  const cal=document.getElementById(key+'PreciseCalendar'), month=document.getElementById(key+'PreciseMonth');
+  if(!cal||!month)return;
+  const old=month.value;
+  const validOld=cal.value==='hebrew'?HEBREW_MONTHS.includes(old):(Number(old)>=1&&Number(old)<=12);
+  month.innerHTML=preciseMonthOptions(cal.value,validOld?old:(cal.value==='hebrew'?'Nisan':4));
+  const day=Number(document.getElementById(key+'PreciseDay').value), preview=document.getElementById(key+'PrecisePreview');
+  const y=signedYear(document.getElementById(cfg.yearId).value,document.getElementById(cfg.eraId).value);
+  if(!day||!y){preview.innerHTML='Laisse vide si seul l’année est connue.';return;}
+  if(cal.value==='civil'){
+    const hp=civilToHebrew(y,Number(month.value),day);
+    preview.innerHTML=hp?'<strong>Équivalent hébreu :</strong> '+hp.day+' '+hp.month+' '+hp.year:'Date non valide.';
+  }else{
+    const cv=hebrewToCivil(y,month.value,day);
+    preview.innerHTML=cv?'<strong>Équivalent civil :</strong> '+cv.day+' '+CIVIL_MONTHS[cv.month-1]+' '+formatYear(cv.year)+'<br><small>Conversion calculée selon le calendrier hébreu fixe.</small>':'Aucun équivalent trouvé dans cette année.';
+  }
+}
+function getGenericPreciseDateData(key){
+  const cfg=PRECISE_DATE_FIELDS[key]; if(!cfg)return null;
+  const day=Number(document.getElementById(key+'PreciseDay')?.value); if(!day)return null;
+  const y=signedYear(document.getElementById(cfg.yearId).value,document.getElementById(cfg.eraId).value); if(!y)return null;
+  const cal=document.getElementById(key+'PreciseCalendar').value, month=document.getElementById(key+'PreciseMonth').value;
+  if(cal==='hebrew'){
+    const cv=hebrewToCivil(y,month,day); if(!cv)return null;
+    const hp=civilToHebrew(cv.year,cv.month,cv.day);
+    return {inputCalendar:'hebrew',hebrew:{day,month,year:hp?hp.year:null},civil:{day:cv.day,month:cv.month,year:cv.year},conversion:'calculated-fixed-hebrew'};
+  }
+  const hp=civilToHebrew(y,Number(month),day); if(!hp)return null;
+  return {inputCalendar:'civil',civil:{day,month:Number(month),year:y},hebrew:{day:hp.day,month:hp.month,year:hp.year},conversion:'calculated-fixed-hebrew'};
+}
+function setGenericPreciseDateData(key,data){
+  const cal=document.getElementById(key+'PreciseCalendar'), day=document.getElementById(key+'PreciseDay'); if(!cal||!day)return;
+  if(!data){cal.value='hebrew';day.value='';updateGenericPreciseDateUI(key);return;}
+  cal.value=data.inputCalendar||'hebrew'; updateGenericPreciseDateUI(key);
+  day.value=cal.value==='civil'?(data.civil?.day||''):(data.hebrew?.day||'');
+  const mv=cal.value==='civil'?data.civil?.month:data.hebrew?.month;
+  if(mv!==undefined&&mv!==null) document.getElementById(key+'PreciseMonth').value=mv;
+  updateGenericPreciseDateUI(key);
+}
+function clearGenericPreciseDateData(keys){ (keys||Object.keys(PRECISE_DATE_FIELDS)).forEach(k=>setGenericPreciseDateData(k,null)); }
+function formatPreciseData(d){
+  if(!d)return '';
+  const a=[]; if(d.hebrew)a.push(d.hebrew.day+' '+d.hebrew.month+' '+d.hebrew.year);
+  if(d.civil)a.push(d.civil.day+' '+CIVIL_MONTHS[d.civil.month-1]+' '+formatYear(d.civil.year));
+  return a.join('  ↔  ');
+}
+function allPreciseDateEntries(o){
+  const pd=o?.preciseDates||{}; const out=[];
+  const add=(label,d)=>{const v=formatPreciseData(d);if(v)out.push({label,value:v});};
+  if(o?.entityKind==='person'){add('Naissance / début de vie',pd.start);add('Mort / fin de vie',pd.end);}
+  else if(o?.entityKind==='reign'){add('Début du règne',pd.start);add('Fin du règne',pd.end);}
+  else if(o?.entityKind==='book'){add('Période couverte — début',pd.coverStart);add('Période couverte — fin',pd.coverEnd);add('Rédaction — début',pd.writeStart);add('Rédaction — fin',pd.writeEnd);}
+  else if(o?.entityKind==='event'){add('Début / date',pd.start||o.preciseDate);add('Fin',pd.end);}
+  else if(o?.preciseDate)add('Date',o.preciseDate);
+  return out;
+}
+
 function signedYear(value,era){
   const n=Math.abs(parseInt(value,10));
   if(!Number.isFinite(n) || n<1) return null;
@@ -1571,6 +1671,7 @@ function savePerson(){
     endCert:endCert,
     userCreated:true,
     entityKind:'person',
+    preciseDates:{start:getGenericPreciseDateData('pStart'),end:getGenericPreciseDateData('pEnd')},
     activities:draftActivities.map(a=>({...a}))
   };
 
@@ -1600,6 +1701,7 @@ function savePerson(){
   document.getElementById('pNotes').value='';
   document.getElementById('pStartCert').value='exact';
   document.getElementById('pEndCert').value='exact';
+  clearGenericPreciseDateData(['pStart','pEnd']);
   editingItemId=null;
   document.querySelector('#personForm h2').textContent='👤 Ajouter un personnage';
   document.querySelector('.saveBtn').textContent='✓ Ajouter';
@@ -1623,6 +1725,7 @@ function openBookForm(){
   removeEntityImage('b');
   document.querySelector('#bookForm h2').textContent='📘 Ajouter un livre biblique';
   document.querySelector('.saveBookBtn').textContent='✓ Ajouter';
+  clearGenericPreciseDateData(['bCoverStart','bCoverEnd','bWriteStart','bWriteEnd']);
   document.getElementById('bookForm').style.display='block';
 }
 
@@ -1690,6 +1793,7 @@ function saveBook(){
     writeEndCert:we,
     fadeStart:cs!=='exact',
     fadeEnd:ce!=='exact',
+    preciseDates:{coverStart:getGenericPreciseDateData('bCoverStart'),coverEnd:getGenericPreciseDateData('bCoverEnd'),writeStart:getGenericPreciseDateData('bWriteStart'),writeEnd:getGenericPreciseDateData('bWriteEnd')},
     userCreated:true,
     entityKind:'book'
   };
@@ -1710,6 +1814,7 @@ function saveBook(){
     .forEach(id=>document.getElementById(id).value='');
   ['bCoverStartEra','bCoverEndEra','bWriteStartEra','bWriteEndEra'].forEach(id=>document.getElementById(id).value='bce');
   ['bCoverStartCert','bCoverEndCert','bWriteStartCert','bWriteEndCert'].forEach(id=>document.getElementById(id).value='exact');
+  clearGenericPreciseDateData(['bCoverStart','bCoverEnd','bWriteStart','bWriteEnd']);
 
   closeBookForm();
   draw();
@@ -1745,6 +1850,10 @@ function editSelectedBook(){
 
   document.getElementById('bWriteStartCert').value=selectedItem.writeStartCert||'exact';
   document.getElementById('bWriteEndCert').value=selectedItem.writeEndCert||'exact';
+  setGenericPreciseDateData('bCoverStart',selectedItem.preciseDates?.coverStart||null);
+  setGenericPreciseDateData('bCoverEnd',selectedItem.preciseDates?.coverEnd||null);
+  setGenericPreciseDateData('bWriteStart',selectedItem.preciseDates?.writeStart||null);
+  setGenericPreciseDateData('bWriteEnd',selectedItem.preciseDates?.writeEnd||null);
   document.getElementById('bPlace').value=selectedItem.place||'';
   setEntityImage('b',selectedItem.image||'');
   document.getElementById('bRefs').value=(selectedItem.ref && selectedItem.ref!=='Aucune référence indiquée')?selectedItem.ref:'';
@@ -1826,6 +1935,7 @@ function saveReign(){
     startCert,endCert,
     fadeStart:startCert!=='exact',
     fadeEnd:endCert!=='exact',
+    preciseDates:{start:getGenericPreciseDateData('rStart'),end:getGenericPreciseDateData('rEnd')},
     userCreated:true,
     entityKind:'reign'
   };
@@ -1845,6 +1955,7 @@ function saveReign(){
   document.getElementById('rEndEra').value='bce';
   document.getElementById('rStartCert').value='exact';
   document.getElementById('rEndCert').value='exact';
+  clearGenericPreciseDateData(['rStart','rEnd']);
   removeEntityImage('r');
   closeReignForm(); draw();
 }
@@ -1865,6 +1976,8 @@ function editSelectedReign(){
   document.getElementById('rEndEra').value=selectedItem.end<0?'bce':'ce';
   document.getElementById('rStartCert').value=selectedItem.startCert || (selectedItem.fadeStart?'approx':'exact');
   document.getElementById('rEndCert').value=selectedItem.endCert || (selectedItem.fadeEnd?'approx':'exact');
+  setGenericPreciseDateData('rStart',selectedItem.preciseDates?.start||null);
+  setGenericPreciseDateData('rEnd',selectedItem.preciseDates?.end||null);
   document.getElementById('rPlace').value=selectedItem.place||'';
   setEntityImage('r',selectedItem.image||'');
   document.getElementById('rRefs').value=(selectedItem.ref && selectedItem.ref!=='Aucune référence indiquée')?selectedItem.ref:'';
@@ -1884,6 +1997,7 @@ function openEventForm(){
   document.querySelector('.saveEventBtn').textContent='✓ Ajouter';
   document.getElementById('eventForm').style.display='block';
   document.getElementById('ePreciseCalendar').value='hebrew'; document.getElementById('ePreciseDay').value=''; updatePreciseDateUI();
+  clearGenericPreciseDateData(['eEnd']);
   toggleEventMode();
 }
 
@@ -1943,7 +2057,8 @@ function saveEvent(){
     fadeEnd:mode==='period' ? endCert!=='exact' : false,
     userCreated:true,
     entityKind:'event',
-    preciseDate:getPreciseDateData()
+    preciseDate:getPreciseDateData(),
+    preciseDates:{start:getPreciseDateData(),end:mode==='period'?getGenericPreciseDateData('eEnd'):null}
   };
 
   if(editingEventId){
@@ -1975,6 +2090,7 @@ function saveEvent(){
   document.getElementById('eEndYear').value='';
   document.getElementById('eEndEra').value='bce';
   document.getElementById('eEndCert').value='exact';
+  clearGenericPreciseDateData(['eEnd']);
   document.getElementById('ePlace').value='';
   document.getElementById('eRefs').value='';
   document.getElementById('eNotes').value='';
@@ -2005,7 +2121,7 @@ function editSelectedEvent(){
   document.getElementById('eStartYear').value=Math.abs(s);
   document.getElementById('eStartEra').value=s<0?'bce':'ce';
   document.getElementById('eStartCert').value=selectedItem.startCert || (selectedItem.fadeStart?'approx':'exact');
-  const pd=selectedItem.preciseDate;
+  const pd=selectedItem.preciseDates?.start || selectedItem.preciseDate;
   document.getElementById('ePreciseCalendar').value=pd?.inputCalendar||'hebrew';
   updatePreciseDateUI();
   if(pd){
@@ -2019,7 +2135,8 @@ function editSelectedEvent(){
     document.getElementById('eEndYear').value=Math.abs(selectedItem.end);
     document.getElementById('eEndEra').value=selectedItem.end<0?'bce':'ce';
     document.getElementById('eEndCert').value=selectedItem.endCert || (selectedItem.fadeEnd?'approx':'exact');
-  }
+    setGenericPreciseDateData('eEnd',selectedItem.preciseDates?.end||null);
+  }else setGenericPreciseDateData('eEnd',null);
 
   document.getElementById('ePlace').value=selectedItem.place||'';
   setEntityImage('e',selectedItem.image||'');
@@ -2184,11 +2301,15 @@ function editSelectedPerson(){
   document.getElementById('pEndYear').value=Math.abs(selectedItem.end);
   document.getElementById('pEndEra').value=selectedItem.end<0?'bce':'ce';
   document.getElementById('pEndCert').value=selectedItem.endCert || (selectedItem.fadeEnd?'approx':'exact');
+  setGenericPreciseDateData('pStart',selectedItem.preciseDates?.start||null);
+  setGenericPreciseDateData('pEnd',selectedItem.preciseDates?.end||null);
 
   document.getElementById('pPlace').value=selectedItem.place||'';
   setEntityImage('p',selectedItem.image||'');
   document.getElementById('pRefs').value=(selectedItem.ref && selectedItem.ref!=='Aucune référence indiquée') ? selectedItem.ref : '';
   document.getElementById('pNotes').value=(selectedItem.notes && selectedItem.notes!=='Aucune note') ? selectedItem.notes : '';
+  draftActivities=Array.isArray(selectedItem.activities)?selectedItem.activities.map(a=>({...a})):[];
+  renderDraftActivities();
 
       info.style.display='none';
   document.getElementById('personForm').style.display='block';
@@ -2453,13 +2574,17 @@ function quickKindLabel(o){
   return 'Personnage';
 }
 function quickDatesLabel(o){
-  const pd=preciseDateLabel(o);
-  if(pd) return pd;
-  if(o.year!==undefined) return certaintyText(o.certainty||o.dateCert||'exact',o.year);
+  const entries=allPreciseDateEntries(o);
+  if(o.year!==undefined){
+    if(entries.length) return entries[0].value;
+    return certaintyText(o.certainty||o.dateCert||o.startCert||'exact',o.year);
+  }
   if(o.start!==undefined&&o.end!==undefined){
     const sc=o.startCert||o.startCertainty||(o.fadeStart?'approx':'exact');
     const ec=o.endCert||o.endCertainty||(o.fadeEnd?'approx':'exact');
-    return certaintyText(sc,o.start)+' → '+certaintyText(ec,o.end);
+    const startDetail=entries.find(x=>/début|Naissance|Date/i.test(x.label));
+    const endDetail=entries.find(x=>/fin|Mort/i.test(x.label));
+    return (startDetail?startDetail.value:certaintyText(sc,o.start))+' → '+(endDetail?endDetail.value:certaintyText(ec,o.end));
   }
   return '';
 }
@@ -2479,7 +2604,12 @@ function openFullCard(o){
   if(o.image){
     html+='<div class="fullImageWrap"><img src="'+o.image+'" alt="'+escapeHtml(o.name||'Illustration')+'" loading="lazy"></div>';
   }
-  if(o.preciseDate){ html+='<section class="fullSection"><h3>📅 Date précise</h3><p>'+escapeHtml(preciseDateLabel(o))+'</p><small>Équivalence calculée selon le calendrier hébreu fixe ; pour l’Antiquité, elle peut différer d’une datation historique reconstruite.</small></section>'; }
+  const preciseEntries=allPreciseDateEntries(o);
+  if(preciseEntries.length){
+    html+='<section class="fullSection"><h3>📅 Dates précises</h3>';
+    preciseEntries.forEach(x=>{html+='<p><strong>'+escapeHtml(x.label)+' :</strong><br>'+escapeHtml(x.value)+'</p>';});
+    html+='<small>Équivalences calculées selon le calendrier hébreu fixe ; pour l’Antiquité, elles peuvent différer d’une datation historique reconstruite.</small></section>';
+  }
   if(o.place){
     html+='<section class="fullSection"><h3>📍 Lieu</h3><p>'+escapeHtml(o.place)+'</p></section>';
   }
@@ -2488,7 +2618,7 @@ function openFullCard(o){
     html+='<section class="fullSection"><h3>🧩 Périodes / fonctions</h3>';
     o.activities.forEach(a=>{
       html+='<div class="fullActivity"><strong>'+escapeHtml(a.label)+'</strong>'+
-        '<small>'+escapeHtml(formatYear(a.start)+' → '+formatYear(a.end))+
+        '<small>'+escapeHtml((formatPreciseData(a.preciseDates?.start)||formatYear(a.start))+' → '+(formatPreciseData(a.preciseDates?.end)||formatYear(a.end)))+
         (a.place?' • 📍 '+escapeHtml(a.place):'')+
         (a.ref?' • 📖 '+escapeHtml(a.ref):'')+'</small></div>';
     });
@@ -2552,6 +2682,7 @@ function isEditableItem(o){
   return true;
 }
 function renderQuickCard(o){
+  quickCardOpenedAt=performance.now();
   const info=document.getElementById('info');
   if(!info||!o) return;
 
@@ -2843,7 +2974,7 @@ function v3CloudError(where,e){
   const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
   v3LastCloudErrorWhere=where||'Firebase';
   v3LastCloudError=code+' — '+msg;
-  console.error('[V3.1 '+v3LastCloudErrorWhere+']',e);
+  console.error('[V3.2.0 '+v3LastCloudErrorWhere+']',e);
   v3State('Erreur cloud ⚠️','off');
 }
 function v3ClearCloudError(){
@@ -2897,7 +3028,7 @@ function v3Cache(items){
     localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
       app:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.1',
+      appVersion:'3.2.0',
       updatedAt:new Date().toISOString(),
       timelineId:V3_TIMELINE_ID,
       items
@@ -2974,7 +3105,7 @@ async function v3SyncNow(){
     batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
       name:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.1',
+      appVersion:'3.2.0',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true});
@@ -3000,7 +3131,7 @@ async function v3SyncNow(){
           v3ApplyItems(freshItems);
         }
       }catch(e){
-        console.warn('[V3.1 relecture serveur]',e);
+        console.warn('[V3.2.0 relecture serveur]',e);
       }
     }
   }catch(e){
@@ -3155,9 +3286,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 3.1</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 3.2.0</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 3.1</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 3.2.0</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
   document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
@@ -3246,6 +3377,7 @@ function initV3(){
 }
 
 
+installPreciseDateControls();
 loadUserPersons();
 resize();
 initV3();
