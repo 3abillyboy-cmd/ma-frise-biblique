@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Ma frise biblique — V3.4 connectée</title>
+<title>Ma frise biblique — V3.4.1 connectée</title>
 <style>
 :root{
   --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
@@ -320,7 +320,7 @@ textarea{min-height:76px;resize:vertical}
 }
 .dataToolbar .chip{margin:0}
 
-/* ===== V3.4 connectée ===== */
+/* ===== V3.4.1 connectée ===== */
 .v3State{
   flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
   background:#334155;color:#e2e8f0;white-space:nowrap
@@ -1303,7 +1303,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.4.0',
+    appVersion:'3.4.1',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -2419,7 +2419,8 @@ function niceStep(){
 
 function drawAdaptiveTimeGrid(w,h){
   const left=xToYear(TIMELINE_SIDE_W), right=xToYear(w);
-  // Years / centuries
+
+  // Années / siècles
   if(pxPerYear<90){
     const step=niceStep();
     const minorStep=step>=100?step/5:step>=50?10:step>=20?5:step>=10?2:1;
@@ -2438,38 +2439,87 @@ function drawAdaptiveTimeGrid(w,h){
     return;
   }
 
-  // Month / week / day scales.  The exact position uses the stored civil equivalent,
-  // while the most detailed label also shows the Hebrew date.
-  let cur=timelinePosToCivil(left-.1); let d=safeCivilDate(cur.year,cur.month,1); d.setUTCMonth(d.getUTCMonth()-1);
+  // Zoom mois / semaines / jours.
+  // Mois civils au-dessus, dans une bande colorée distincte.
+  // Dates hébraïques en dessous pour éviter tout chevauchement.
+  const civilBandTop=0, civilBandH=23;
+  const hebrewDayY=35, hebrewMonthY=46;
+  const gridTop=50;
+
+  let cur=timelinePosToCivil(left-.1);
+  let d=safeCivilDate(cur.year,cur.month,1);
+  d.setUTCMonth(d.getUTCMonth()-1);
   const endPos=right+.1;
+
   for(let guard=0;guard<60;guard++){
     const hy=astronomicalToHist(d.getUTCFullYear()), m=d.getUTCMonth()+1;
-    const mp=civilToTimelinePos({year:hy,month:m,day:1}); if(mp>endPos) break;
-    const x=yearToX(mp);
-    ctx.strokeStyle='rgba(100,116,139,.42)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,28);ctx.lineTo(x,h);ctx.stroke();
-    ctx.fillStyle='#475569';ctx.textAlign='left';ctx.font='800 11px system-ui';
-    if(x>TIMELINE_SIDE_W-15&&x<w-45) ctx.fillText(shortMonth(m)+(m===1?' '+formatYear(hy):''),x+4,18);
-    d.setUTCMonth(d.getUTCMonth()+1);
+    const mp=civilToTimelinePos({year:hy,month:m,day:1});
+    if(mp>endPos) break;
+
+    const next=new Date(d.getTime());
+    next.setUTCMonth(next.getUTCMonth()+1);
+    const nhy=astronomicalToHist(next.getUTCFullYear()), nm=next.getUTCMonth()+1;
+    const np=civilToTimelinePos({year:nhy,month:nm,day:1});
+
+    const x=yearToX(mp), x2=yearToX(np);
+    const bandX=Math.max(TIMELINE_SIDE_W,x);
+    const bandX2=Math.min(w,x2);
+
+    if(bandX2>bandX){
+      // Alternance de deux teintes pour séparer visuellement les mois civils.
+      ctx.fillStyle=(m%2===0)?'rgba(37,99,235,.11)':'rgba(14,165,233,.08)';
+      ctx.fillRect(bandX,civilBandTop,bandX2-bandX,civilBandH);
+
+      ctx.strokeStyle='rgba(37,99,235,.30)';
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x,civilBandTop);ctx.lineTo(x,h);ctx.stroke();
+
+      const label=shortMonth(m)+(m===1?' '+formatYear(hy):'');
+      ctx.fillStyle='#1e3a5f';
+      ctx.textAlign='center';
+      ctx.font='800 11px system-ui';
+      const cx=(Math.max(TIMELINE_SIDE_W,x)+Math.min(w,x2))/2;
+      if(x2-x>34 && cx>TIMELINE_SIDE_W+14 && cx<w-14) ctx.fillText(label,cx,16);
+    }
+
+    d=next;
   }
 
+  ctx.strokeStyle='rgba(37,99,235,.24)';
+  ctx.beginPath();ctx.moveTo(TIMELINE_SIDE_W,civilBandH+.5);ctx.lineTo(w,civilBandH+.5);ctx.stroke();
+
   if(pxPerYear>=650){
-    const c0=timelinePosToCivil(left-.03); let dd=safeCivilDate(c0.year,c0.month,c0.day); dd.setUTCDate(dd.getUTCDate()-8);
+    const c0=timelinePosToCivil(left-.03);
+    let dd=safeCivilDate(c0.year,c0.month,c0.day);
+    dd.setUTCDate(dd.getUTCDate()-8);
     const maxDays=Math.min(500,Math.ceil((right-left)*367)+20);
     const daySpacing=pxPerYear/365.25;
     const daily=daySpacing>=10;
+
     for(let i=0;i<maxDays;i++){
       const hy=astronomicalToHist(dd.getUTCFullYear()), mo=dd.getUTCMonth()+1, da=dd.getUTCDate();
-      const pos=civilToTimelinePos({year:hy,month:mo,day:da}); if(pos>endPos) break;
+      const pos=civilToTimelinePos({year:hy,month:mo,day:da});
+      if(pos>endPos) break;
+
       const isWeek=(dd.getUTCDay()===1), drawLine=daily||isWeek;
       if(drawLine){
-        const x=yearToX(pos);ctx.strokeStyle=daily?'rgba(203,213,225,.24)':'rgba(148,163,184,.30)';ctx.lineWidth=1;
-        ctx.beginPath();ctx.moveTo(x,29);ctx.lineTo(x,h);ctx.stroke();
+        const x=yearToX(pos);
+        ctx.strokeStyle=daily?'rgba(203,213,225,.22)':'rgba(148,163,184,.30)';
+        ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(x,gridTop);ctx.lineTo(x,h);ctx.stroke();
       }
+
       if(daily&&daySpacing>=18){
-        const x=yearToX(pos); if(x>TIMELINE_SIDE_W+3&&x<w-20){
+        const x=yearToX(pos);
+        if(x>TIMELINE_SIDE_W+3&&x<w-20){
           const hp=hebrewParts(dd);
-          ctx.textAlign='center';ctx.fillStyle='#334155';ctx.font='800 10px system-ui';ctx.fillText(String(hp.day),x,18);
-          ctx.fillStyle='#8290a3';ctx.font='700 8px system-ui';ctx.fillText(hp.month,x,27);
+          ctx.textAlign='center';
+          ctx.fillStyle='#334155';
+          ctx.font='800 10px system-ui';
+          ctx.fillText(String(hp.day),x,hebrewDayY);
+          ctx.fillStyle='#7c3aed';
+          ctx.font='700 8px system-ui';
+          ctx.fillText(hp.month,x,hebrewMonthY);
         }
       }
       dd.setUTCDate(dd.getUTCDate()+1);
@@ -3100,7 +3150,7 @@ function v3CloudError(where,e){
   const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
   v3LastCloudErrorWhere=where||'Firebase';
   v3LastCloudError=code+' — '+msg;
-  console.error('[V3.4.0 '+v3LastCloudErrorWhere+']',e);
+  console.error('[V3.4.1 '+v3LastCloudErrorWhere+']',e);
   v3State('Erreur cloud ⚠️','off');
 }
 function v3ClearCloudError(){
@@ -3154,7 +3204,7 @@ function v3Cache(items){
     localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
       app:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.4.0',
+      appVersion:'3.4.1',
       updatedAt:new Date().toISOString(),
       timelineId:V3_TIMELINE_ID,
       items
@@ -3231,7 +3281,7 @@ async function v3SyncNow(){
     batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
       name:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.4.0',
+      appVersion:'3.4.1',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true});
@@ -3257,7 +3307,7 @@ async function v3SyncNow(){
           v3ApplyItems(freshItems);
         }
       }catch(e){
-        console.warn('[V3.4.0 relecture serveur]',e);
+        console.warn('[V3.4.1 relecture serveur]',e);
       }
     }
   }catch(e){
@@ -3412,9 +3462,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 3.4.0</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 3.4.1</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 3.4.0</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 3.4.1</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
   document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
