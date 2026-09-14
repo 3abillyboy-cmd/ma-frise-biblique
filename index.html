@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Ma frise biblique — V3 connectée</title>
+<title>Ma frise biblique — V3.1 connectée</title>
 <style>
 :root{
   --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
@@ -320,7 +320,7 @@ textarea{min-height:76px;resize:vertical}
 }
 .dataToolbar .chip{margin:0}
 
-/* ===== V3 connectée ===== */
+/* ===== V3.1 connectée ===== */
 .v3State{
   flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
   background:#334155;color:#e2e8f0;white-space:nowrap
@@ -382,6 +382,16 @@ body.v3ReadOnly .importBtn{display:none!important}
   padding:14px;border:1px solid #fbbf24;border-radius:14px;background:#fffbeb;
   color:#78350f;line-height:1.45
 }
+
+
+/* V3.1 — frise plus visuelle + dates bibliques précises */
+:root{--side:112px}
+#stageWrap{background:#f7f9fc}
+.preciseDateBox{margin:10px 0 12px;padding:12px;border:1px solid #334155;border-radius:14px;background:#0b1220}
+.preciseDateBox .preciseTitle{font-size:13px;font-weight:850;margin-bottom:8px;color:#e2e8f0}
+.preciseGrid{display:grid;grid-template-columns:1fr 1.35fr;gap:8px}
+.precisePreview{margin-top:9px;padding:9px 10px;border-radius:10px;background:#172033;color:#cbd5e1;font-size:13px;line-height:1.35}
+.precisePreview strong{color:#fff}
 
 </style>
 
@@ -740,11 +750,11 @@ body.v3ReadOnly .importBtn{display:none!important}
       <div class="formRow">
         <div>
           <label>Date / début</label>
-          <input id="eStartYear" type="number" min="1" inputmode="numeric" placeholder="607">
+          <input id="eStartYear" type="number" min="1" inputmode="numeric" placeholder="607" oninput="updatePreciseDateUI()">
         </div>
         <div>
           <label>Ère</label>
-          <select id="eStartEra">
+          <select id="eStartEra" onchange="updatePreciseDateUI()">
             <option value="bce">av. n. è.</option>
             <option value="ce">de n. è.</option>
           </select>
@@ -757,6 +767,16 @@ body.v3ReadOnly .importBtn{display:none!important}
         <option value="approx">Approximative</option>
         <option value="unknown">Incertaine</option>
       </select>
+
+      <div class="preciseDateBox">
+        <div class="preciseTitle">📅 Jour et mois (facultatif)</div>
+        <div class="preciseGrid">
+          <div><label>Je saisis en</label><select id="ePreciseCalendar" onchange="updatePreciseDateUI()"><option value="hebrew">Calendrier hébreu</option><option value="civil">Calendrier civil</option></select></div>
+          <div><label>Jour</label><input id="ePreciseDay" type="number" min="1" max="31" inputmode="numeric" placeholder="14" oninput="updatePreciseDateUI()"></div>
+          <div class="formFull" style="grid-column:1/-1"><label>Mois</label><select id="ePreciseMonth" onchange="updatePreciseDateUI()"></select></div>
+        </div>
+        <div id="ePrecisePreview" class="precisePreview">Laisse vide si seul l’année est connue.</div>
+      </div>
 
       <div id="eventEndBlock" style="display:none">
         <div class="formRow">
@@ -1025,11 +1045,14 @@ let centerYear=-1000;
 let pxPerYear=2.3;
 let offsetY=0;
 
+const TIMELINE_SIDE_W=112;
 function yearToX(year){
-  return wrap.clientWidth/2 + (year-centerYear)*pxPerYear;
+  const usable=Math.max(1,wrap.clientWidth-TIMELINE_SIDE_W);
+  return TIMELINE_SIDE_W + usable/2 + (year-centerYear)*pxPerYear;
 }
 function xToYear(x){
-  return centerYear + (x-wrap.clientWidth/2)/pxPerYear;
+  const usable=Math.max(1,wrap.clientWidth-TIMELINE_SIDE_W);
+  return centerYear + (x-(TIMELINE_SIDE_W+usable/2))/pxPerYear;
 }
 function formatYear(y){
   const yr=Math.round(y);
@@ -1197,7 +1220,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.0.5',
+    appVersion:'3.1',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -1420,6 +1443,73 @@ document.addEventListener('pointerdown',(e)=>{
   const fab=document.getElementById('addFab');
   if(fab && !fab.contains(e.target)) closeAddMenu();
 });
+
+const HEBREW_MONTHS=['Nisan','Iyar','Sivan','Tamuz','Av','Elul','Tishri','Heshvan','Kislev','Tevet','Shevat','Adar I','Adar'];
+const CIVIL_MONTHS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const hebrewFmt=new Intl.DateTimeFormat('en-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+function histToAstronomical(y){ return y<0 ? y+1 : y; }
+function astronomicalToHist(y){ return y<=0 ? y-1 : y; }
+function safeCivilDate(histYear,month,day){
+  const ay=histToAstronomical(histYear); const d=new Date(Date.UTC(2000,month-1,day)); d.setUTCFullYear(ay); return d;
+}
+function hebrewParts(date){
+  const p={}; hebrewFmt.formatToParts(date).forEach(x=>{if(x.type!=='literal')p[x.type]=x.value});
+  return {day:Number(p.day),month:p.month,year:Number(p.year)};
+}
+function civilToHebrew(histYear,month,day){
+  try{ const d=safeCivilDate(histYear,month,day); if(d.getUTCMonth()!=month-1||d.getUTCDate()!=day)return null; return hebrewParts(d); }catch(e){return null}
+}
+function hebrewToCivil(histYear,hmonth,hday){
+  const ay=histToAstronomical(histYear);
+  for(let delta=-190;delta<=555;delta++){
+    const d=new Date(Date.UTC(2000,0,1)); d.setUTCFullYear(ay); d.setUTCDate(1+delta);
+    const hp=hebrewParts(d);
+    if(hp.day===hday && hp.month===hmonth){
+      const hy=astronomicalToHist(d.getUTCFullYear());
+      if(hy===histYear) return {year:hy,month:d.getUTCMonth()+1,day:d.getUTCDate(),hebrewYear:hp.year};
+    }
+  }
+  return null;
+}
+function preciseMonthOptions(calendar,selected){
+  const arr=calendar==='hebrew'?HEBREW_MONTHS:CIVIL_MONTHS;
+  return arr.map((m,i)=>'<option value="'+(calendar==='hebrew'?m:i+1)+'" '+(String(selected)===String(calendar==='hebrew'?m:i+1)?'selected':'')+'>'+m+'</option>').join('');
+}
+function updatePreciseDateUI(){
+  const cal=document.getElementById('ePreciseCalendar'); if(!cal)return;
+  const month=document.getElementById('ePreciseMonth'); const old=month.value;
+  const validOld=cal.value==='hebrew'?HEBREW_MONTHS.includes(old):(Number(old)>=1&&Number(old)<=12);
+  month.innerHTML=preciseMonthOptions(cal.value,validOld?old:(cal.value==='hebrew'?'Nisan':4));
+  const day=Number(document.getElementById('ePreciseDay').value); const preview=document.getElementById('ePrecisePreview');
+  const y=signedYear(document.getElementById('eStartYear').value,document.getElementById('eStartEra').value);
+  if(!day||!y){preview.innerHTML='Laisse vide si seul l’année est connue.';return;}
+  if(cal.value==='civil'){
+    const hp=civilToHebrew(y,Number(month.value),day);
+    preview.innerHTML=hp?'<strong>Équivalent hébreu :</strong> '+hp.day+' '+hp.month+' '+hp.year:'Date non valide.';
+  }else{
+    const cv=hebrewToCivil(y,month.value,day);
+    preview.innerHTML=cv?'<strong>Équivalent civil :</strong> '+cv.day+' '+CIVIL_MONTHS[cv.month-1]+' '+formatYear(cv.year)+'<br><small>Conversion calculée selon le calendrier hébreu fixe.</small>':'Aucun équivalent trouvé dans cette année.';
+  }
+}
+function getPreciseDateData(){
+  const day=Number(document.getElementById('ePreciseDay').value); if(!day)return null;
+  const y=signedYear(document.getElementById('eStartYear').value,document.getElementById('eStartEra').value); if(!y)return null;
+  const cal=document.getElementById('ePreciseCalendar').value, month=document.getElementById('ePreciseMonth').value;
+  if(cal==='hebrew'){
+    const cv=hebrewToCivil(y,month,day); if(!cv)return null;
+    const hp=civilToHebrew(cv.year,cv.month,cv.day);
+    return {inputCalendar:'hebrew',hebrew:{day,month,year:hp?hp.year:null},civil:{day:cv.day,month:cv.month,year:cv.year},conversion:'calculated-fixed-hebrew'};
+  }
+  const hp=civilToHebrew(y,Number(month),day); if(!hp)return null;
+  return {inputCalendar:'civil',civil:{day,month:Number(month),year:y},hebrew:{day:hp.day,month:hp.month,year:hp.year},conversion:'calculated-fixed-hebrew'};
+}
+function preciseDateLabel(o){
+  const d=o&&o.preciseDate; if(!d)return '';
+  const h=d.hebrew, c=d.civil; let parts=[];
+  if(h)parts.push(h.day+' '+h.month+' '+h.year);
+  if(c)parts.push(c.day+' '+CIVIL_MONTHS[c.month-1]+' '+formatYear(c.year));
+  return parts.join('  ↔  ');
+}
 
 function signedYear(value,era){
   const n=Math.abs(parseInt(value,10));
@@ -1793,6 +1883,7 @@ function openEventForm(){
   document.querySelector('#eventForm h2').textContent='📍 Ajouter un événement';
   document.querySelector('.saveEventBtn').textContent='✓ Ajouter';
   document.getElementById('eventForm').style.display='block';
+  document.getElementById('ePreciseCalendar').value='hebrew'; document.getElementById('ePreciseDay').value=''; updatePreciseDateUI();
   toggleEventMode();
 }
 
@@ -1851,7 +1942,8 @@ function saveEvent(){
     fadeStart:startCert!=='exact',
     fadeEnd:mode==='period' ? endCert!=='exact' : false,
     userCreated:true,
-    entityKind:'event'
+    entityKind:'event',
+    preciseDate:getPreciseDateData()
   };
 
   if(editingEventId){
@@ -1877,6 +1969,9 @@ function saveEvent(){
   document.getElementById('eStartYear').value='';
   document.getElementById('eStartEra').value='bce';
   document.getElementById('eStartCert').value='exact';
+  document.getElementById('ePreciseDay').value='';
+  document.getElementById('ePreciseCalendar').value='hebrew';
+  updatePreciseDateUI();
   document.getElementById('eEndYear').value='';
   document.getElementById('eEndEra').value='bce';
   document.getElementById('eEndCert').value='exact';
@@ -1910,6 +2005,15 @@ function editSelectedEvent(){
   document.getElementById('eStartYear').value=Math.abs(s);
   document.getElementById('eStartEra').value=s<0?'bce':'ce';
   document.getElementById('eStartCert').value=selectedItem.startCert || (selectedItem.fadeStart?'approx':'exact');
+  const pd=selectedItem.preciseDate;
+  document.getElementById('ePreciseCalendar').value=pd?.inputCalendar||'hebrew';
+  updatePreciseDateUI();
+  if(pd){
+    document.getElementById('ePreciseDay').value=pd.inputCalendar==='civil'?pd.civil?.day||'':pd.hebrew?.day||'';
+    const mv=pd.inputCalendar==='civil'?pd.civil?.month:pd.hebrew?.month;
+    if(mv) document.getElementById('ePreciseMonth').value=mv;
+    updatePreciseDateUI();
+  }else document.getElementById('ePreciseDay').value='';
 
   if(document.getElementById('eMode').value==='period'){
     document.getElementById('eEndYear').value=Math.abs(selectedItem.end);
@@ -2119,6 +2223,8 @@ function draw(){
   const w=wrap.clientWidth,h=wrap.clientHeight;
   ctx.clearRect(0,0,w,h);
   ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#eef2f7';ctx.fillRect(0,0,TIMELINE_SIDE_W,h);
+  ctx.save();ctx.beginPath();ctx.rect(TIMELINE_SIDE_W,0,w-TIMELINE_SIDE_W,h);ctx.clip();
 
   const step=niceStep();
   const minorStep = step>=100 ? step/5 : step>=50 ? 10 : step>=20 ? 5 : step>=10 ? 2 : 1;
@@ -2154,32 +2260,30 @@ function draw(){
     const yy=base+offsetY;
     if(yy>35&&yy<h){
       ctx.strokeStyle='rgba(148,163,184,.20)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(8,yy);ctx.lineTo(w-8,yy);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(TIMELINE_SIDE_W+8,yy);ctx.lineTo(w-8,yy);ctx.stroke();
     }
   });
-
-  drawSectionLabel('PERSONNAGES',sectionY.persons);
-  drawSectionLabel('RÈGNES',sectionY.reigns);
-  drawSectionLabel('PROPHÈTES / LIVRES',sectionY.books);
-  drawSectionLabel('ÉVÉNEMENTS',sectionY.events);
 
   rows.forEach(o=>{
     if(o.entityKind==='event' && o.eventMode==='point') drawPoint(o);
     else drawBar(o);
   });
   points.forEach(drawPoint);
+  ctx.restore();
+  drawSectionLabel('👤  PERSONNAGES',sectionY.persons,'#2563eb');
+  drawSectionLabel('👑  RÈGNES',sectionY.reigns,'#8b5cf6');
+  drawSectionLabel('📖  LIVRES',sectionY.books,'#14b8a6');
+  drawSectionLabel('⚡  ÉVÉNEMENTS',sectionY.events,'#f59e0b');
+  ctx.strokeStyle='#d5dde8';ctx.beginPath();ctx.moveTo(TIMELINE_SIDE_W-.5,0);ctx.lineTo(TIMELINE_SIDE_W-.5,h);ctx.stroke();
 }
 
-function drawSectionLabel(text,y){
+function drawSectionLabel(text,y,color){
   const yy=y+offsetY;
-  if(yy<-20||yy>wrap.clientHeight+20) return;
-  ctx.font='800 10px system-ui';
-  ctx.textAlign='left';
-  const tw=ctx.measureText(text).width;
-  ctx.fillStyle='rgba(248,250,252,.92)';
-  ctx.beginPath();ctx.roundRect(7,yy-13,tw+12,18,6);ctx.fill();
-  ctx.fillStyle='#64748b';
-  ctx.fillText(text,13,yy);
+  if(yy<-24||yy>wrap.clientHeight+24) return;
+  ctx.fillStyle=color||'#64748b';
+  ctx.beginPath();ctx.roundRect(7,yy-16,TIMELINE_SIDE_W-14,26,8);ctx.fill();
+  ctx.font='800 10px system-ui';ctx.textAlign='left';ctx.fillStyle='#fff';
+  ctx.fillText(text,13,yy+1);
 }
 
 
@@ -2241,7 +2345,7 @@ function drawBar(r){
   ctx.fillStyle='#0f172a';
   ctx.textAlign='left';
   ctx.font='750 13px system-ui';
-  const labelX=Math.max(left+8,8);
+  const labelX=Math.max(left+8,TIMELINE_SIDE_W+8);
   if(labelX<wrap.clientWidth-80) ctx.fillText(r.name,labelX,y+19);
 
   r.hit={x1:left,y1:y,x2:right,y2:y+hh};
@@ -2349,6 +2453,8 @@ function quickKindLabel(o){
   return 'Personnage';
 }
 function quickDatesLabel(o){
+  const pd=preciseDateLabel(o);
+  if(pd) return pd;
   if(o.year!==undefined) return certaintyText(o.certainty||o.dateCert||'exact',o.year);
   if(o.start!==undefined&&o.end!==undefined){
     const sc=o.startCert||o.startCertainty||(o.fadeStart?'approx':'exact');
@@ -2373,6 +2479,7 @@ function openFullCard(o){
   if(o.image){
     html+='<div class="fullImageWrap"><img src="'+o.image+'" alt="'+escapeHtml(o.name||'Illustration')+'" loading="lazy"></div>';
   }
+  if(o.preciseDate){ html+='<section class="fullSection"><h3>📅 Date précise</h3><p>'+escapeHtml(preciseDateLabel(o))+'</p><small>Équivalence calculée selon le calendrier hébreu fixe ; pour l’Antiquité, elle peut différer d’une datation historique reconstruite.</small></section>'; }
   if(o.place){
     html+='<section class="fullSection"><h3>📍 Lieu</h3><p>'+escapeHtml(o.place)+'</p></section>';
   }
@@ -2736,7 +2843,7 @@ function v3CloudError(where,e){
   const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
   v3LastCloudErrorWhere=where||'Firebase';
   v3LastCloudError=code+' — '+msg;
-  console.error('[V3.0.5 '+v3LastCloudErrorWhere+']',e);
+  console.error('[V3.1 '+v3LastCloudErrorWhere+']',e);
   v3State('Erreur cloud ⚠️','off');
 }
 function v3ClearCloudError(){
@@ -2790,7 +2897,7 @@ function v3Cache(items){
     localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
       app:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.0.5',
+      appVersion:'3.1',
       updatedAt:new Date().toISOString(),
       timelineId:V3_TIMELINE_ID,
       items
@@ -2867,7 +2974,7 @@ async function v3SyncNow(){
     batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
       name:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.0.5',
+      appVersion:'3.1',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true});
@@ -2893,7 +3000,7 @@ async function v3SyncNow(){
           v3ApplyItems(freshItems);
         }
       }catch(e){
-        console.warn('[V3.0.5 relecture serveur]',e);
+        console.warn('[V3.1 relecture serveur]',e);
       }
     }
   }catch(e){
@@ -3048,9 +3155,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 3.0.5</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 3.1</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 3.0.5</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 3.1</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
   document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
