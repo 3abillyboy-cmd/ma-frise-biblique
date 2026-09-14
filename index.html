@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Ma frise biblique — V3.1.1 connectée</title>
+<title>Ma frise biblique — V3.3 connectée</title>
 <style>
 :root{
   --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
@@ -320,7 +320,7 @@ textarea{min-height:76px;resize:vertical}
 }
 .dataToolbar .chip{margin:0}
 
-/* ===== V3.1.1 connectée ===== */
+/* ===== V3.3 connectée ===== */
 .v3State{
   flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
   background:#334155;color:#e2e8f0;white-space:nowrap
@@ -392,6 +392,33 @@ body.v3ReadOnly .importBtn{display:none!important}
 .preciseGrid{display:grid;grid-template-columns:1fr 1.35fr;gap:8px}
 .precisePreview{margin-top:9px;padding:9px 10px;border-radius:10px;background:#172033;color:#cbd5e1;font-size:13px;line-height:1.35}
 .precisePreview strong{color:#fff}
+
+
+
+/* ===== V3.3 — refonte visuelle mobile ===== */
+html,body{height:100%;height:100dvh}
+body{display:flex;flex-direction:column;background:#0b1323}
+.v33Header{height:54px;min-height:54px;padding:0 10px;gap:7px;background:linear-gradient(180deg,#101b30,#0d1728);box-shadow:0 2px 12px rgba(0,0,0,.18);z-index:40}
+.v33Header h1{font-size:16px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v33Header .v3State{padding:4px 7px;font-size:10px}
+.v33IconBtn{width:38px;height:38px;flex:0 0 38px;border:1px solid #2b3a52;border-radius:12px;background:#18243a;color:#f8fafc;font-size:19px;font-weight:900;padding:0}
+#accountBtn{max-width:none!important}
+#readonlyBanner{flex:0 0 auto}
+.searchPanel.v33Search{flex:0 0 auto;margin:6px 8px;border-radius:14px;background:#101a2d;border-color:#2a3950;box-shadow:none;overflow:hidden}
+.v33SearchToggle{width:100%;height:43px;border:0;background:transparent;color:#dce6f5;display:flex;align-items:center;gap:8px;padding:0 12px;font-weight:800;font-size:13px;text-align:left}
+.v33SearchToggle span{flex:1}.v33SearchToggle b{font-size:17px;color:#7f91aa;transition:transform .18s ease}
+.v33Search.expanded .v33SearchToggle b{transform:rotate(180deg)}
+.v33SearchBody{display:none}.v33Search.expanded .v33SearchBody{display:block}
+.v33Search .searchWrap{padding:4px 8px 6px;background:transparent}.v33Search .searchWrap input{padding:9px 11px;border-radius:11px;font-size:14px;background:#0c1526}.v33Search .searchWrap button{width:43px;padding:0;border-radius:11px;font-size:17px}
+.v33Search .searchFilters{padding:3px 8px 8px;background:transparent;gap:6px}.v33Search .filterChip{min-height:34px;padding:7px 10px;font-size:11px;background:#18243a;border-color:#35445b}.v33Search .filterChip.active{background:#2563eb;border-color:#4f8cff}
+#searchResults{max-height:31vh}
+.dataToolbar.v33Menu{display:none;position:fixed;right:8px;top:50px;z-index:15000;width:min(290px,calc(100vw - 16px));height:auto;padding:8px;background:#fff;border:1px solid #dce5ef;border-radius:16px;box-shadow:0 16px 40px rgba(2,6,23,.28);flex-direction:column;align-items:stretch;gap:4px}
+.dataToolbar.v33Menu.open{display:flex}
+.v33MenuAction{width:100%;border:0;border-radius:11px;background:#f6f8fb;color:#1f2d42;padding:12px 13px;text-align:left;font-weight:800;font-size:14px;box-shadow:none!important}
+.v33MenuAction.importBtn{background:#f6f8fb!important;color:#1f2d42!important}
+#stageWrap{flex:1 1 auto;min-height:0;height:auto!important;background:#fbfcfe;border-top:1px solid #dfe6ef}
+.addMain{min-height:46px;padding:0 15px!important;font-size:20px;box-shadow:0 8px 22px rgba(22,103,217,.28)!important}.addMain span{font-size:13px}.fab{right:12px;bottom:max(14px,env(safe-area-inset-bottom))}
+@media(max-width:390px){.v33Header h1 span{display:none}.v33Header h1{flex:0 0 auto}.v33Header{gap:6px}}
 
 </style>
 
@@ -465,36 +492,38 @@ body.v3ReadOnly .importBtn{display:none!important}
   </div>
 </div>
 
-<header>
-  <h1>📖 Ma frise biblique</h1>
+<header class="v33Header">
+  <h1>📖 <span>Ma frise biblique</span></h1>
   <span id="v3State" class="v3State off">Local</span>
-  <button class="btn" onclick="focusBiblical()">1000 av.</button>
-  <button class="btn" onclick="resetView()">Recentrer</button>
-  <button class="btn" id="accountBtn" type="button">👤 Compte</button>
+  <button class="v33IconBtn" onclick="resetView()" title="Recentrer" aria-label="Recentrer">◎</button>
+  <button class="v33IconBtn" id="accountBtn" type="button" title="Compte" aria-label="Compte">👤</button>
+  <button class="v33IconBtn" id="v33MenuBtn" type="button" title="Menu" aria-label="Menu">⋮</button>
 </header>
 <div id="readonlyBanner">👁 Mode visiteur — consultation uniquement</div>
 
-<div class="searchPanel">
-  <div class="searchPanelTitle">🔎 Rechercher dans la frise</div>
-  <div class="searchWrap">
-    <input id="personSearch" type="search" placeholder="Nom, lieu, date, livre…" autocomplete="off">
-    <button id="searchBtn" type="button">Rechercher</button>
-  </div>
-  <div class="searchFilters">
-    <button class="filterChip active" data-kind="person" type="button">👤 Personnages</button>
-    <button class="filterChip" data-kind="event" type="button">⚡ Événements</button>
-    <button class="filterChip" data-kind="date" type="button">📅 Dates</button>
-    <button class="filterChip" data-kind="book" type="button">📖 Livres</button>
-    <button class="filterChip" data-kind="reign" type="button">👑 Règnes</button>
-    <button class="filterChip" data-kind="place" type="button">📍 Lieux</button>
+<div class="searchPanel v33Search" id="v33SearchPanel">
+  <button class="v33SearchToggle" id="v33SearchToggle" type="button">🔎 <span>Rechercher dans la frise</span><b>⌄</b></button>
+  <div class="v33SearchBody">
+    <div class="searchWrap">
+      <input id="personSearch" type="search" placeholder="Nom, lieu, date, livre…" autocomplete="off">
+      <button id="searchBtn" type="button" aria-label="Rechercher">🔎</button>
+    </div>
+    <div class="searchFilters">
+      <button class="filterChip active" data-kind="person" type="button">👤 Personnages</button>
+      <button class="filterChip" data-kind="event" type="button">⚡ Événements</button>
+      <button class="filterChip" data-kind="date" type="button">📅 Dates</button>
+      <button class="filterChip" data-kind="book" type="button">📖 Livres</button>
+      <button class="filterChip" data-kind="reign" type="button">👑 Règnes</button>
+      <button class="filterChip" data-kind="place" type="button">📍 Lieux</button>
+    </div>
   </div>
   <div id="searchResults"></div>
 </div>
 
-<div class="dataToolbar">
-  <span class="dataToolbarLabel">Sauvegarde</span>
-  <button class="chip dataBtn exportBtn" onclick="exportTimeline()">⬇ Exporter</button>
-  <button class="chip dataBtn importBtn" onclick="document.getElementById('importFile').click()">⬆ Importer</button>
+<div class="dataToolbar v33Menu" id="v33Menu">
+  <button class="v33MenuAction" onclick="focusBiblical();v33CloseMenu()">🕰️ Aller vers 1000 av. n. è.</button>
+  <button class="v33MenuAction" onclick="exportTimeline();v33CloseMenu()">⬇️ Exporter une sauvegarde</button>
+  <button class="v33MenuAction importBtn" onclick="document.getElementById('importFile').click();v33CloseMenu()">⬆️ Importer une sauvegarde</button>
   <input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importTimeline(event)">
 </div>
 
@@ -1049,7 +1078,7 @@ let centerYear=-1000;
 let pxPerYear=2.3;
 let offsetY=0;
 
-const TIMELINE_SIDE_W=112;
+const TIMELINE_SIDE_W=96;
 function yearToX(year){
   const usable=Math.max(1,wrap.clientWidth-TIMELINE_SIDE_W);
   return TIMELINE_SIDE_W + usable/2 + (year-centerYear)*pxPerYear;
@@ -1224,7 +1253,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'3.2.0',
+    appVersion:'3.3.0',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -1520,7 +1549,7 @@ function preciseDateLabel(o){
 }
 
 
-// V3.2 — jours/mois disponibles pour toutes les dates de la frise.
+// V3.3 — dates précises + refonte visuelle mobile.
 const PRECISE_DATE_FIELDS={
   pStart:{yearId:'pStartYear',eraId:'pStartEra',afterId:'pStartCert',title:'Naissance / début de vie'},
   pEnd:{yearId:'pEndYear',eraId:'pEndEra',afterId:'pEndCert',title:'Mort / fin de vie'},
@@ -2974,7 +3003,7 @@ function v3CloudError(where,e){
   const msg=(e&&e.message)?String(e.message):String(e||'Erreur inconnue');
   v3LastCloudErrorWhere=where||'Firebase';
   v3LastCloudError=code+' — '+msg;
-  console.error('[V3.2.0 '+v3LastCloudErrorWhere+']',e);
+  console.error('[V3.3.0 '+v3LastCloudErrorWhere+']',e);
   v3State('Erreur cloud ⚠️','off');
 }
 function v3ClearCloudError(){
@@ -3028,7 +3057,7 @@ function v3Cache(items){
     localStorage.setItem(STORAGE_DATA_KEY,JSON.stringify({
       app:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.2.0',
+      appVersion:'3.3.0',
       updatedAt:new Date().toISOString(),
       timelineId:V3_TIMELINE_ID,
       items
@@ -3105,7 +3134,7 @@ async function v3SyncNow(){
     batch.set(v3Db.collection('timelines').doc(V3_TIMELINE_ID),{
       name:'Ma frise biblique',
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'3.2.0',
+      appVersion:'3.3.0',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true});
@@ -3131,7 +3160,7 @@ async function v3SyncNow(){
           v3ApplyItems(freshItems);
         }
       }catch(e){
-        console.warn('[V3.2.0 relecture serveur]',e);
+        console.warn('[V3.3.0 relecture serveur]',e);
       }
     }
   }catch(e){
@@ -3286,9 +3315,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 3.2.0</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 3.3.0</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 3.2.0</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 3.3.0</strong><br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
   document.getElementById('v3AdminRequests').style.display=v3Role==='admin'?'block':'none';
@@ -3377,8 +3406,24 @@ function initV3(){
 }
 
 
+
+// V3.3 — commandes compactes, pensées d'abord pour le téléphone.
+function v33CloseMenu(){ document.getElementById('v33Menu')?.classList.remove('open'); }
+function v33InitCompactUi(){
+  const panel=document.getElementById('v33SearchPanel');
+  const toggle=document.getElementById('v33SearchToggle');
+  const menu=document.getElementById('v33Menu');
+  const menuBtn=document.getElementById('v33MenuBtn');
+  toggle?.addEventListener('click',()=>{ panel?.classList.toggle('expanded'); v33CloseMenu(); setTimeout(resize,40); });
+  menuBtn?.addEventListener('click',(e)=>{ e.stopPropagation(); menu?.classList.toggle('open'); });
+  menu?.addEventListener('click',e=>e.stopPropagation());
+  document.addEventListener('click',v33CloseMenu);
+  document.getElementById('personSearch')?.addEventListener('focus',()=>panel?.classList.add('expanded'));
+}
+
 installPreciseDateControls();
 loadUserPersons();
+v33InitCompactUi();
 resize();
 initV3();
 </script>
