@@ -176,6 +176,13 @@ textarea{min-height:76px;resize:vertical}
 .activityCard button{margin-top:7px;border:0;border-radius:8px;padding:7px 9px;background:#7f1d1d;color:#fff;font-weight:700}
 .addActivityBtn{width:100%;border:0;border-radius:10px;padding:11px;background:#0f766e;color:#fff;font-weight:800}
 
+.lifeBound{border-radius:12px;padding:10px;border:1px solid transparent}
+.birthBound{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.28)}
+.deathBound{background:rgba(244,63,94,.08);border-color:rgba(244,63,94,.28)}
+.lifePeriodsBox{background:rgba(37,99,235,.08);border-color:rgba(96,165,250,.35);margin-top:14px}
+.lifePeriodsBox h3{color:#93c5fd}
+.optionalTag{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:999px;background:#1e3a8a;color:#dbeafe;font-size:10px;vertical-align:1px}
+
 
 .dataBtn{
   border:none !important;
@@ -1001,9 +1008,49 @@ body{display:flex;flex-direction:column;background:#0b1323}
             </select>
           </div>
 
-          <div class="formFull activityBox">
-            <h3>🧩 Périodes de vie / fonctions</h3>
-            <div class="smallNote">Ajoute autant de périodes que nécessaire. Elles peuvent se suivre ou se chevaucher.</div>
+          <div class="formFull lifeBound birthBound">
+            <label>🟢 Naissance / début de vie</label>
+            <div class="dateRow">
+              <input id="pStartYear" type="number" inputmode="numeric" placeholder="Année">
+              <select id="pStartEra">
+                <option value="bce">av. n. è.</option>
+                <option value="ce">de n. è.</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="formFull lifeBound birthBound">
+            <label for="pStartCert">Précision de la date de début</label>
+            <select id="pStartCert">
+              <option value="exact">Exacte</option>
+              <option value="approx">Approximative</option>
+              <option value="unknown">Incertaine</option>
+            </select>
+          </div>
+
+          <div class="formFull lifeBound deathBound">
+            <label>🔴 Mort / fin de vie</label>
+            <div class="dateRow">
+              <input id="pEndYear" type="number" inputmode="numeric" placeholder="Année">
+              <select id="pEndEra">
+                <option value="bce">av. n. è.</option>
+                <option value="ce">de n. è.</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="formFull lifeBound deathBound">
+            <label for="pEndCert">Précision de la date de fin</label>
+            <select id="pEndCert">
+              <option value="exact">Exacte</option>
+              <option value="approx">Approximative</option>
+              <option value="unknown">Incertaine</option>
+            </select>
+          </div>
+
+          <div class="formFull activityBox lifePeriodsBox">
+            <h3>🔵 Périodes de vie / fonctions <span class="optionalTag">Facultatif</span></h3>
+            <div class="smallNote">À remplir seulement si tu veux préciser une fonction ou une étape de sa vie. Sinon, tu peux laisser cette partie vide.</div>
             <label>Fonction / activité</label>
             <input id="aLabel" placeholder="Ex. Berger, prophète, roi de Juda…">
             <div class="activityRow">
@@ -1024,46 +1071,6 @@ body{display:flex;flex-direction:column;background:#0b1323}
             <input id="aRef" placeholder="Ex. 1 Samuel 16–17">
             <button type="button" class="addActivityBtn" onclick="addDraftActivity()">＋ Ajouter cette période</button>
             <div id="activityDraftList" class="activityList"></div>
-          </div>
-
-          <div class="formFull">
-            <label>Naissance / début de vie</label>
-            <div class="dateRow">
-              <input id="pStartYear" type="number" inputmode="numeric" placeholder="Année">
-              <select id="pStartEra">
-                <option value="bce">av. n. è.</option>
-                <option value="ce">de n. è.</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="formFull">
-            <label for="pStartCert">Précision de la date de début</label>
-            <select id="pStartCert">
-              <option value="exact">Exacte</option>
-              <option value="approx">Approximative</option>
-              <option value="unknown">Incertaine</option>
-            </select>
-          </div>
-
-          <div class="formFull">
-            <label>Mort / fin de vie</label>
-            <div class="dateRow">
-              <input id="pEndYear" type="number" inputmode="numeric" placeholder="Année">
-              <select id="pEndEra">
-                <option value="bce">av. n. è.</option>
-                <option value="ce">de n. è.</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="formFull">
-            <label for="pEndCert">Précision de la date de fin</label>
-            <select id="pEndCert">
-              <option value="exact">Exacte</option>
-              <option value="approx">Approximative</option>
-              <option value="unknown">Incertaine</option>
-            </select>
           </div>
 
           <div class="formFull">
@@ -1411,7 +1418,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'4.3.4',
+    appVersion:'4.3.5',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -2873,7 +2880,7 @@ function quickDatesLabel(o){
   return '';
 }
 
-// V4.3.4 — Références bibliques interactives, exclusivement vers la Bible sur jw.org.
+// V4.3.5 — Formulaire personnage plus lisible : naissance et mort avant les périodes de vie.
 const JW_BOOKS={
   'genese':'Genèse','exode':'Exode','levitique':'Lévitique','nombres':'Nombres','deuteronome':'Deutéronome',
   'josue':'Josué','juges':'Juges','ruth':'Ruth','1 samuel':'1-Samuel','2 samuel':'2-Samuel','1 rois':'1-Rois','2 rois':'2-Rois',
@@ -3331,7 +3338,7 @@ async function v41RequestSiteAccess(){
 function v4SetTitle(){
   const el=document.querySelector('#v4TimelineTitle span');
   if(el) el.textContent=v4TimelineName||'Ma frise biblique';
-  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.4';
+  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.5';
 }
 
 function v3ApplyUi(){
@@ -3376,7 +3383,7 @@ function v4Comparable(item){
 function v3Cache(items){
   try{
     const doc={
-      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.4',
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.5',
       updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
     };
     localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
@@ -3502,7 +3509,7 @@ async function v3SyncNow(){
     }
   }catch(e){
     v3LocalDirty=true;
-    v3CloudError('écriture V4.3.4',e);
+    v3CloudError('écriture V4.3.5',e);
   }finally{
     v3Syncing=false;
     if(v3ResyncRequested || v3LocalRevision!==revisionAtStart){
@@ -3585,7 +3592,7 @@ async function v4TryLegacyMigration(){
         name:'Ma frise biblique',ownerUid:v3User.uid,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.4'
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.5'
       });
     }
     const mref=tref.collection('members').doc(v3User.uid);
@@ -3629,7 +3636,7 @@ async function v4CreateTimeline(name){
     name,ownerUid:v3User.uid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.4'
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.5'
   });
   await tref.collection('members').doc(v3User.uid).set({
     uid:v3User.uid,email:v3User.email||'',role:'admin',
