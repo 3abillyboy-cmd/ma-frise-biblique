@@ -1411,7 +1411,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'4.3.3',
+    appVersion:'4.3.4',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -2873,7 +2873,8 @@ function quickDatesLabel(o){
   return '';
 }
 
-// V4.3.3 — Références bibliques interactives, exclusivement vers la Bible sur jw.org.
+// V4.3.4 — Références bibliques interactives, exclusivement vers la Bible sur jw.org.
+// Le détecteur accepte maintenant les accents français (Genèse, Hébreux, Éphésiens, etc.).
 const JW_BOOKS={
   'genese':'Genèse','exode':'Exode','levitique':'Lévitique','nombres':'Nombres','deuteronome':'Deutéronome',
   'josue':'Josué','juges':'Juges','ruth':'Ruth','1 samuel':'1-Samuel','2 samuel':'2-Samuel','1 rois':'1-Rois','2 rois':'2-Rois',
@@ -2897,14 +2898,20 @@ function jwBibleUrl(book,chapter){
 function renderBibleRefs(text){
   const raw=String(text||'');
   if(!raw) return '';
-  const bookNames=Object.keys(JW_BOOKS).sort((a,b)=>b.length-a.length).map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
-  const re=new RegExp('\\b('+bookNames+')\\s+(\\d{1,3})(?:\\s*:\\s*(\\d{1,3})(?:\\s*[-–]\\s*(\\d{1,3}))?)?','giu');
+  // On repère un nom de livre possible avant chapitre:verset, puis on valide le livre
+  // après suppression des accents. Cela évite le bug V4.3.3 où « Genèse » ne correspondait pas à « genese ».
+  const re=/(^|[^\p{L}\p{N}])((?:[123]\s+)?[\p{L}Œœ'’.-]+(?:\s+(?:de\s+)?[\p{L}Œœ'’.-]+){0,2})\s+(\d{1,3})(?:\s*:\s*(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?)?/giu;
   let out='',last=0,m;
   while((m=re.exec(raw))){
-    out+=escapeHtml(raw.slice(last,m.index));
-    const url=jwBibleUrl(m[1],m[2]);
-    if(url) out+='<a class="jwBibleRef" href="'+url+'" target="_blank" rel="noopener noreferrer" title="Ouvrir dans la Bible d’étude sur jw.org">'+escapeHtml(m[0])+' ↗</a>';
-    else out+=escapeHtml(m[0]);
+    const prefix=m[1]||'';
+    const book=m[2];
+    const chapter=m[3];
+    const url=jwBibleUrl(book,chapter);
+    if(!url) continue;
+    const refStart=m.index+prefix.length;
+    out+=escapeHtml(raw.slice(last,refStart));
+    const refText=m[0].slice(prefix.length);
+    out+='<a class="jwBibleRef" href="'+url+'" target="_blank" rel="noopener noreferrer" title="Ouvrir dans la Bible d’étude sur jw.org">'+escapeHtml(refText)+' ↗</a>';
     last=re.lastIndex;
   }
   out+=escapeHtml(raw.slice(last));
@@ -3331,7 +3338,7 @@ async function v41RequestSiteAccess(){
 function v4SetTitle(){
   const el=document.querySelector('#v4TimelineTitle span');
   if(el) el.textContent=v4TimelineName||'Ma frise biblique';
-  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.3';
+  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.4';
 }
 
 function v3ApplyUi(){
@@ -3376,7 +3383,7 @@ function v4Comparable(item){
 function v3Cache(items){
   try{
     const doc={
-      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.3',
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.4',
       updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
     };
     localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
@@ -3469,7 +3476,7 @@ async function v3SyncNow(){
     v3State('Synchronisation…','wait');
     const col=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items');
 
-    // V4.3.3 : écrit chaque fiche séparément. Ainsi une fiche problématique
+    // V4.3.4 : écrit chaque fiche séparément. Ainsi une fiche problématique
     // ne bloque plus silencieusement toute la synchronisation.
     for(const id of pendingIds){
       const item=localMap.get(id);
@@ -3502,7 +3509,7 @@ async function v3SyncNow(){
     }
   }catch(e){
     v3LocalDirty=true;
-    v3CloudError('écriture V4.3.3',e);
+    v3CloudError('écriture V4.3.4',e);
   }finally{
     v3Syncing=false;
     if(v3ResyncRequested || v3LocalRevision!==revisionAtStart){
@@ -3585,7 +3592,7 @@ async function v4TryLegacyMigration(){
         name:'Ma frise biblique',ownerUid:v3User.uid,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.3'
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.4'
       });
     }
     const mref=tref.collection('members').doc(v3User.uid);
@@ -3629,7 +3636,7 @@ async function v4CreateTimeline(name){
     name,ownerUid:v3User.uid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.3'
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.4'
   });
   await tref.collection('members').doc(v3User.uid).set({
     uid:v3User.uid,email:v3User.email||'',role:'admin',
