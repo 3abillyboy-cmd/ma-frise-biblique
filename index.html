@@ -2874,7 +2874,6 @@ function quickDatesLabel(o){
 }
 
 // V4.3.4 — Références bibliques interactives, exclusivement vers la Bible sur jw.org.
-// Le détecteur accepte maintenant les accents français (Genèse, Hébreux, Éphésiens, etc.).
 const JW_BOOKS={
   'genese':'Genèse','exode':'Exode','levitique':'Lévitique','nombres':'Nombres','deuteronome':'Deutéronome',
   'josue':'Josué','juges':'Juges','ruth':'Ruth','1 samuel':'1-Samuel','2 samuel':'2-Samuel','1 rois':'1-Rois','2 rois':'2-Rois',
@@ -2889,7 +2888,7 @@ const JW_BOOKS={
   'hebreux':'Hébreux','jacques':'Jacques','1 pierre':'1-Pierre','2 pierre':'2-Pierre','1 jean':'1-Jean','2 jean':'2-Jean','3 jean':'3-Jean',
   'jude':'Jude','revelation':'Révélation','apocalypse':'Révélation'
 };
-function jwNormBook(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.]/g,'').replace(/\s+/g,' ').trim();}
+function jwNormBook(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.]/g,'').replace(/[-–—]/g,' ').replace(/\s+/g,' ').trim();}
 function jwBibleUrl(book,chapter){
   const slug=JW_BOOKS[jwNormBook(book)];
   if(!slug||!chapter) return '';
@@ -2898,20 +2897,14 @@ function jwBibleUrl(book,chapter){
 function renderBibleRefs(text){
   const raw=String(text||'');
   if(!raw) return '';
-  // On repère un nom de livre possible avant chapitre:verset, puis on valide le livre
-  // après suppression des accents. Cela évite le bug V4.3.3 où « Genèse » ne correspondait pas à « genese ».
-  const re=/(^|[^\p{L}\p{N}])((?:[123]\s+)?[\p{L}Œœ'’.-]+(?:\s+(?:de\s+)?[\p{L}Œœ'’.-]+){0,2})\s+(\d{1,3})(?:\s*:\s*(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?)?/giu;
+  const bookNames=[...new Set([...Object.keys(JW_BOOKS),...Object.values(JW_BOOKS)])].sort((a,b)=>b.length-a.length).map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
+  const re=new RegExp('\\b('+bookNames+')\\s+(\\d{1,3})(?:\\s*:\\s*(\\d{1,3})(?:\\s*[-–]\\s*(\\d{1,3}))?)?','giu');
   let out='',last=0,m;
   while((m=re.exec(raw))){
-    const prefix=m[1]||'';
-    const book=m[2];
-    const chapter=m[3];
-    const url=jwBibleUrl(book,chapter);
-    if(!url) continue;
-    const refStart=m.index+prefix.length;
-    out+=escapeHtml(raw.slice(last,refStart));
-    const refText=m[0].slice(prefix.length);
-    out+='<a class="jwBibleRef" href="'+url+'" target="_blank" rel="noopener noreferrer" title="Ouvrir dans la Bible d’étude sur jw.org">'+escapeHtml(refText)+' ↗</a>';
+    out+=escapeHtml(raw.slice(last,m.index));
+    const url=jwBibleUrl(m[1],m[2]);
+    if(url) out+='<a class="jwBibleRef" href="'+url+'" target="_blank" rel="noopener noreferrer" title="Ouvrir dans la Bible d’étude sur jw.org">'+escapeHtml(m[0])+' ↗</a>';
+    else out+=escapeHtml(m[0]);
     last=re.lastIndex;
   }
   out+=escapeHtml(raw.slice(last));
@@ -3980,9 +3973,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 4.3.3</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 4.3.4</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 4.3.3</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
+      diag.innerHTML='<strong>Version 4.3.4</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
     }
   }
   v4RenderTimelineLists();
