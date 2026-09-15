@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Ma frise biblique — V4.2 multi-frises</title>
+<title>Ma frise biblique — V4.2.1 multi-frises</title>
 <style>
 :root{
   --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
@@ -320,7 +320,7 @@ textarea{min-height:76px;resize:vertical}
 }
 .dataToolbar .chip{margin:0}
 
-/* ===== V4.2 multi-frises ===== */
+/* ===== V4.2.1 multi-frises ===== */
 .v3State{
   flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
   background:#334155;color:#e2e8f0;white-space:nowrap
@@ -1408,7 +1408,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'4.2.0',
+    appVersion:'4.2.1',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -3335,7 +3335,7 @@ function v4Comparable(item){
 function v3Cache(items){
   try{
     const doc={
-      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.0',
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.1',
       updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
     };
     localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
@@ -3388,22 +3388,27 @@ function v42RefreshPending(){
 }
 
 function v42MergeRemoteSnapshot(snap){
-  const localMap=new Map(v3AllItems().map(x=>[x.id,x]));
-
-  // Toujours actualiser notre connaissance réelle du serveur.
   const serverItems=snap.docs.map(d=>({id:d.id,...d.data()}));
   v3CloudIds=new Set(serverItems.map(x=>x.id));
   v3CloudMap=new Map(serverItems.map(x=>[x.id,x]));
 
-  // Fusionner les changements distants fiche par fiche.
-  // Une fiche en cours de modification locale reste locale jusqu'à son envoi.
+  // Sans modification locale explicitement en attente, Firebase est la référence.
+  // Cela évite que la normalisation des anciennes fiches soit prise à tort
+  // pour une modification locale au simple chargement de la page.
+  if(!v3LocalDirty && !v42PendingIds.size && !v42PendingDeletes.size){
+    v3ApplyItems(serverItems);
+    return;
+  }
+
+  const localMap=new Map(v3AllItems().map(x=>[x.id,x]));
+  // S'il existe réellement des changements locaux, fusionner uniquement les
+  // changements distants qui ne concernent pas ces fiches en attente.
   for(const ch of snap.docChanges()){
     const id=ch.doc.id;
     if(v42PendingIds.has(id) || v42PendingDeletes.has(id)) continue;
     if(ch.type==='removed') localMap.delete(id);
     else localMap.set(id,{id,...ch.doc.data()});
   }
-
   v3ApplyItems([...localMap.values()]);
 }
 
@@ -3452,7 +3457,7 @@ async function v3SyncNow(){
     batch.set(tref,{
       name:v4TimelineName,
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'4.2.0',
+      appVersion:'4.2.1',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
     },{merge:true}); ops++;
@@ -3518,9 +3523,9 @@ async function v3SubscribeItems(){
 
   if(v3ItemsUnsub) v3ItemsUnsub();
   v3ItemsUnsub=col.onSnapshot(snap=>{
-    // V4.2 : ne plus jeter les mises à jour reçues pendant une synchronisation.
+    // V4.2.1 : une réception Firebase ne doit jamais être interprétée
+    // comme une nouvelle modification locale. Au démarrage, Firebase est la référence.
     v42MergeRemoteSnapshot(snap);
-    if(!v3Syncing) v42RefreshPending();
     v3ClearCloudError();
     v3State((v3Syncing||v3LocalDirty)?'Synchronisation…':'En ligne',
             (v3Syncing||v3LocalDirty)?'wait':'ok');
@@ -3565,7 +3570,7 @@ async function v4TryLegacyMigration(){
         name:'Ma frise biblique',ownerUid:v3User.uid,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.0'
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.1'
       });
     }
     const mref=tref.collection('members').doc(v3User.uid);
@@ -3609,7 +3614,7 @@ async function v4CreateTimeline(name){
     name,ownerUid:v3User.uid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.0'
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.1'
   });
   await tref.collection('members').doc(v3User.uid).set({
     uid:v3User.uid,email:v3User.email||'',role:'admin',
@@ -3953,9 +3958,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 4.2</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 4.2.1</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 4.2</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 4.2.1</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
   v4RenderTimelineLists();
