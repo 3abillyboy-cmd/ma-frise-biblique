@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>Ma frise biblique — V4.1 multi-frises</title>
+<title>Ma frise biblique — V4.2 multi-frises</title>
 <style>
 :root{
   --bg:#0f172a; --panel:#111827; --panel2:#0b1220; --ink:#e5e7eb;
@@ -320,7 +320,7 @@ textarea{min-height:76px;resize:vertical}
 }
 .dataToolbar .chip{margin:0}
 
-/* ===== V4.1 multi-frises ===== */
+/* ===== V4.2 multi-frises ===== */
 .v3State{
   flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:850;
   background:#334155;color:#e2e8f0;white-space:nowrap
@@ -1408,7 +1408,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'4.1.0',
+    appVersion:'4.2.0',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -3232,6 +3232,7 @@ let v3Auth=null, v3Db=null, v3User=null, v3Role=null;
 let v3ItemsUnsub=null, v3MembersUnsub=null;
 let v3CloudIds=new Set(), v3CloudMap=new Map(), v3ApplyingCloud=false, v3SaveTimer=null, v3Ready=false;
 let v3LocalDirty=false, v3Syncing=false, v3LocalRevision=0, v3ResyncRequested=false;
+let v42PendingIds=new Set(), v42PendingDeletes=new Set();
 let v3LastCloudError='', v3LastCloudErrorWhere='';
 let v4TimelineName='Ma frise biblique', v4TimelineRefs=[], v4CurrentMembership=null;
 
@@ -3289,7 +3290,7 @@ async function v41RequestSiteAccess(){
 function v4SetTitle(){
   const el=document.querySelector('#v4TimelineTitle span');
   if(el) el.textContent=v4TimelineName||'Ma frise biblique';
-  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.0';
+  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.2';
 }
 
 function v3ApplyUi(){
@@ -3334,7 +3335,7 @@ function v4Comparable(item){
 function v3Cache(items){
   try{
     const doc={
-      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.1.0',
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.0',
       updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
     };
     localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
@@ -3368,83 +3369,134 @@ function v3ApplyItems(items){
   }
 }
 
+function v42RefreshPending(){
+  if(!v3Ready) return;
+  const localItems=v3AllItems();
+  const localMap=new Map(localItems.map(x=>[x.id,x]));
+  const pending=new Set(), deleted=new Set();
+
+  for(const [id,item] of localMap){
+    const cloud=v3CloudMap.get(id);
+    if(!cloud || v4Comparable(cloud)!==v4Comparable(item)) pending.add(id);
+  }
+  for(const id of v3CloudIds){
+    if(!localMap.has(id)) deleted.add(id);
+  }
+  v42PendingIds=pending;
+  v42PendingDeletes=deleted;
+  v3LocalDirty=!!(pending.size||deleted.size);
+}
+
+function v42MergeRemoteSnapshot(snap){
+  const localMap=new Map(v3AllItems().map(x=>[x.id,x]));
+
+  // Toujours actualiser notre connaissance réelle du serveur.
+  const serverItems=snap.docs.map(d=>({id:d.id,...d.data()}));
+  v3CloudIds=new Set(serverItems.map(x=>x.id));
+  v3CloudMap=new Map(serverItems.map(x=>[x.id,x]));
+
+  // Fusionner les changements distants fiche par fiche.
+  // Une fiche en cours de modification locale reste locale jusqu'à son envoi.
+  for(const ch of snap.docChanges()){
+    const id=ch.doc.id;
+    if(v42PendingIds.has(id) || v42PendingDeletes.has(id)) continue;
+    if(ch.type==='removed') localMap.delete(id);
+    else localMap.set(id,{id,...ch.doc.data()});
+  }
+
+  v3ApplyItems([...localMap.values()]);
+}
+
 async function v3SyncNow(){
   if(!v3Db || !v3User || !V3_TIMELINE_ID || !v3CanEdit() || v3ApplyingCloud) return;
   if(v3Syncing){v3ResyncRequested=true;return;}
 
+  v42RefreshPending();
+  if(!v3LocalDirty){v3State('En ligne','ok');return;}
+
   const revisionAtStart=v3LocalRevision;
-  const items=v3AllItems();
-  const currentIds=new Set(items.map(x=>x.id));
+  const pendingIds=new Set(v42PendingIds);
+  const pendingDeletes=new Set(v42PendingDeletes);
+  const localMap=new Map(v3AllItems().map(x=>[x.id,x]));
   v3Syncing=true;
+
   try{
     v3State('Synchronisation…','wait');
-    let batch=v3Db.batch(), ops=0, writes=0;
+    let batch=v3Db.batch(), ops=0;
     const flush=async()=>{if(ops){await batch.commit();batch=v3Db.batch();ops=0;}};
 
-    // V4 : on n'écrit que les fiches réellement nouvelles ou modifiées.
-    for(const item of items){
+    // V4.2 : chaque fiche modifiée est envoyée indépendamment.
+    for(const id of pendingIds){
+      const item=localMap.get(id);
+      if(!item) continue;
       const cleanItem=v3CleanForFirestore(item);
       const approx=JSON.stringify(cleanItem).length;
       if(approx>900000){
         alert('Une fiche est trop volumineuse pour la synchronisation en ligne. Retire ou réduis son image.');
         continue;
       }
-      const cloud=v3CloudMap.get(item.id);
-      if(cloud && v4Comparable(cloud)===v4Comparable(cleanItem)) continue;
-      const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(item.id);
+      const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(id);
       batch.set(ref,{...cleanItem,_updatedAt:firebase.firestore.FieldValue.serverTimestamp(),_updatedBy:v3User.uid});
-      ops++;writes++;
+      ops++;
       if(ops>=350) await flush();
     }
 
-    // On ne supprime que des fiches qui existaient déjà dans CETTE frise.
-    for(const id of v3CloudIds){
-      if(!currentIds.has(id)){
-        const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(id);
-        batch.delete(ref);ops++;writes++;
-        if(ops>=350) await flush();
-      }
+    // Seules les suppressions explicitement détectées avant l'envoi sont supprimées.
+    for(const id of pendingDeletes){
+      const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(id);
+      batch.delete(ref); ops++;
+      if(ops>=350) await flush();
     }
 
     const tref=v3Db.collection('timelines').doc(V3_TIMELINE_ID);
     batch.set(tref,{
       name:v4TimelineName,
       schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'4.1.0',
+      appVersion:'4.2.0',
       updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy:v3User.uid
-    },{merge:true});ops++;
+    },{merge:true}); ops++;
     await flush();
 
-    if(v3LocalRevision===revisionAtStart) v3LocalDirty=false;
-    v3ClearCloudError();
-    v3State(v3LocalDirty?'Synchronisation…':'En ligne',v3LocalDirty?'wait':'ok');
+    if(v3LocalRevision===revisionAtStart){
+      for(const id of pendingIds) v42PendingIds.delete(id);
+      for(const id of pendingDeletes) v42PendingDeletes.delete(id);
+    }
 
-    if(!v3LocalDirty){
+    v3ClearCloudError();
+
+    // Relire le serveur uniquement quand aucune nouvelle modification locale n'est arrivée.
+    if(v3LocalRevision===revisionAtStart){
       const fresh=await tref.collection('items').get({source:'server'});
-      if(v3LocalRevision===revisionAtStart){
-        const freshItems=fresh.docs.map(d=>({id:d.id,...d.data()}));
-        v3CloudIds=new Set(freshItems.map(x=>x.id));
-        v3CloudMap=new Map(freshItems.map(x=>[x.id,x]));
-        v3ApplyItems(freshItems);
-      }
+      const freshItems=fresh.docs.map(d=>({id:d.id,...d.data()}));
+      v3CloudIds=new Set(freshItems.map(x=>x.id));
+      v3CloudMap=new Map(freshItems.map(x=>[x.id,x]));
+      v42PendingIds.clear();
+      v42PendingDeletes.clear();
+      v3LocalDirty=false;
+      v3ApplyItems(freshItems);
+      v3State('En ligne','ok');
+    }else{
+      v42RefreshPending();
+      v3State('Synchronisation…','wait');
     }
   }catch(e){
     v3LocalDirty=true;
     v3CloudError('écriture/synchronisation',e);
   }finally{
     v3Syncing=false;
-    if(v3ResyncRequested || v3LocalDirty){
-      const shouldRetry=v3ResyncRequested || v3LocalRevision!==revisionAtStart;
+    if(v3ResyncRequested || v3LocalRevision!==revisionAtStart){
       v3ResyncRequested=false;
-      if(shouldRetry){clearTimeout(v3SaveTimer);v3SaveTimer=setTimeout(v3SyncNow,300);}
+      clearTimeout(v3SaveTimer);
+      v3SaveTimer=setTimeout(v3SyncNow,300);
     }
   }
 }
+
 window.v3QueueCloudSave=function(){
-  v3LocalDirty=true;
   v3LocalRevision++;
   if(!v3Ready || !v3CanEdit() || v3ApplyingCloud) return;
+  v42RefreshPending();
   clearTimeout(v3SaveTimer);
   v3SaveTimer=setTimeout(v3SyncNow,250);
 };
@@ -3459,22 +3511,24 @@ async function v3SubscribeItems(){
   const firstItems=first.docs.map(d=>({id:d.id,...d.data()}));
   v3CloudIds=new Set(firstItems.map(x=>x.id));
   v3CloudMap=new Map(firstItems.map(x=>[x.id,x]));
+  v42PendingIds.clear();
+  v42PendingDeletes.clear();
+  v3LocalDirty=false;
   v3ApplyItems(firstItems);
 
   if(v3ItemsUnsub) v3ItemsUnsub();
   v3ItemsUnsub=col.onSnapshot(snap=>{
-    const items=snap.docs.map(d=>({id:d.id,...d.data()}));
-    if(v3LocalDirty || v3Syncing){v3State('Synchronisation…','wait');return;}
-    v3CloudIds=new Set(items.map(x=>x.id));
-    v3CloudMap=new Map(items.map(x=>[x.id,x]));
-    v3ApplyItems(items);
+    // V4.2 : ne plus jeter les mises à jour reçues pendant une synchronisation.
+    v42MergeRemoteSnapshot(snap);
+    if(!v3Syncing) v42RefreshPending();
     v3ClearCloudError();
-    v3State('En ligne','ok');
+    v3State((v3Syncing||v3LocalDirty)?'Synchronisation…':'En ligne',
+            (v3Syncing||v3LocalDirty)?'wait':'ok');
   },err=>v3CloudError('lecture temps réel',err));
 
   v3Ready=true;
-  if(v3LocalDirty && v3CanEdit()) v3SyncNow();
 }
+
 
 function v4RandomId(prefix='t'){
   return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);
@@ -3511,7 +3565,7 @@ async function v4TryLegacyMigration(){
         name:'Ma frise biblique',ownerUid:v3User.uid,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.1.0'
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.0'
       });
     }
     const mref=tref.collection('members').doc(v3User.uid);
@@ -3555,7 +3609,7 @@ async function v4CreateTimeline(name){
     name,ownerUid:v3User.uid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.1.0'
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.0'
   });
   await tref.collection('members').doc(v3User.uid).set({
     uid:v3User.uid,email:v3User.email||'',role:'admin',
@@ -3604,7 +3658,7 @@ async function v4SelectTimeline(tid){
   if(v3MembersUnsub){v3MembersUnsub();v3MembersUnsub=null;}
   clearTimeout(v3SaveTimer);
   v3Ready=false;v3LocalDirty=false;v3Syncing=false;v3ResyncRequested=false;
-  v3CloudIds=new Set();v3CloudMap=new Map();
+  v3CloudIds=new Set();v3CloudMap=new Map();v42PendingIds.clear();v42PendingDeletes.clear();
 
   const m=await v4ReadMembership(tid);
   if(!m) throw new Error('Tu n’as pas accès à cette frise.');
@@ -3899,9 +3953,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 4.1</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 4.2</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 4.1</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 4.2</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
     }
   }
   v4RenderTimelineLists();
@@ -3979,7 +4033,7 @@ function initV3(){
   v3Auth.onAuthStateChanged(user=>{
     if(v3ItemsUnsub){v3ItemsUnsub();v3ItemsUnsub=null;}
     if(v3MembersUnsub){v3MembersUnsub();v3MembersUnsub=null;}
-    v3Ready=false;v3CloudIds=new Set();v3CloudMap=new Map();v3LocalDirty=false;v3Syncing=false;v3ResyncRequested=false;clearTimeout(v3SaveTimer);
+    v3Ready=false;v3CloudIds=new Set();v3CloudMap=new Map();v42PendingIds.clear();v42PendingDeletes.clear();v3LocalDirty=false;v3Syncing=false;v3ResyncRequested=false;clearTimeout(v3SaveTimer);
     if(!user){
       v3User=null;v3Role=null;v4TimelineRefs=[];v4CurrentMembership=null;
       window.__V3_CONNECTED=false;window.__V3_CAN_EDIT=true;
