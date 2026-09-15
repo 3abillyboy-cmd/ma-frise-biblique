@@ -450,6 +450,9 @@ body{display:flex;flex-direction:column;background:#0b1323}
 #v4TimelineOverlay .v3Card{max-height:88vh}
 @media(max-width:390px){.v4ChoiceGrid{grid-template-columns:1fr}}
 
+
+    .jwBibleRef{color:#1d4ed8;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;font-weight:650;cursor:pointer}
+    .jwBibleRef:active{opacity:.65}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
@@ -1408,7 +1411,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'4.3.2',
+    appVersion:'4.3.3',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -2870,6 +2873,44 @@ function quickDatesLabel(o){
   return '';
 }
 
+// V4.3.3 — Références bibliques interactives, exclusivement vers la Bible sur jw.org.
+const JW_BOOKS={
+  'genese':'Genèse','exode':'Exode','levitique':'Lévitique','nombres':'Nombres','deuteronome':'Deutéronome',
+  'josue':'Josué','juges':'Juges','ruth':'Ruth','1 samuel':'1-Samuel','2 samuel':'2-Samuel','1 rois':'1-Rois','2 rois':'2-Rois',
+  '1 chroniques':'1-Chroniques','2 chroniques':'2-Chroniques','esdras':'Esdras','nehemie':'Néhémie','esther':'Esther','job':'Job',
+  'psaume':'Psaumes','psaumes':'Psaumes','proverbes':'Proverbes','ecclesiaste':'Ecclésiaste','chant de salomon':'Chant-de-Salomon',
+  'isaie':'Isaïe','jeremie':'Jérémie','lamentations':'Lamentations','ezechiel':'Ézéchiel','daniel':'Daniel','osee':'Osée','joel':'Joël',
+  'amos':'Amos','abdias':'Abdias','jonas':'Jonas','michee':'Michée','nahum':'Nahum','habacuc':'Habacuc','sophonie':'Sophonie',
+  'aggee':'Aggée','zacharie':'Zacharie','malachie':'Malachie','matthieu':'Matthieu','marc':'Marc','luc':'Luc','jean':'Jean',
+  'actes':'Actes','romains':'Romains','1 corinthiens':'1-Corinthiens','2 corinthiens':'2-Corinthiens','galates':'Galates',
+  'ephesiens':'Éphésiens','philippiens':'Philippiens','colossiens':'Colossiens','1 thessaloniciens':'1-Thessaloniciens',
+  '2 thessaloniciens':'2-Thessaloniciens','1 timothee':'1-Timothée','2 timothee':'2-Timothée','tite':'Tite','philemon':'Philémon',
+  'hebreux':'Hébreux','jacques':'Jacques','1 pierre':'1-Pierre','2 pierre':'2-Pierre','1 jean':'1-Jean','2 jean':'2-Jean','3 jean':'3-Jean',
+  'jude':'Jude','revelation':'Révélation','apocalypse':'Révélation'
+};
+function jwNormBook(v){return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.]/g,'').replace(/\s+/g,' ').trim();}
+function jwBibleUrl(book,chapter){
+  const slug=JW_BOOKS[jwNormBook(book)];
+  if(!slug||!chapter) return '';
+  return 'https://www.jw.org/fr/bibliothèque/bible/bible-d-etude/livres/'+encodeURIComponent(slug)+'/'+chapter+'/';
+}
+function renderBibleRefs(text){
+  const raw=String(text||'');
+  if(!raw) return '';
+  const bookNames=Object.keys(JW_BOOKS).sort((a,b)=>b.length-a.length).map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
+  const re=new RegExp('\\b('+bookNames+')\\s+(\\d{1,3})(?:\\s*:\\s*(\\d{1,3})(?:\\s*[-–]\\s*(\\d{1,3}))?)?','giu');
+  let out='',last=0,m;
+  while((m=re.exec(raw))){
+    out+=escapeHtml(raw.slice(last,m.index));
+    const url=jwBibleUrl(m[1],m[2]);
+    if(url) out+='<a class="jwBibleRef" href="'+url+'" target="_blank" rel="noopener noreferrer" title="Ouvrir dans la Bible d’étude sur jw.org">'+escapeHtml(m[0])+' ↗</a>';
+    else out+=escapeHtml(m[0]);
+    last=re.lastIndex;
+  }
+  out+=escapeHtml(raw.slice(last));
+  return out.replace(/\n/g,'<br>');
+}
+
 function openFullCard(o){
   if(!o) return;
   const card=document.getElementById('fullCard');
@@ -2901,7 +2942,7 @@ function openFullCard(o){
       html+='<div class="fullActivity"><strong>'+escapeHtml(a.label)+'</strong>'+
         '<small>'+escapeHtml((formatPreciseData(a.preciseDates?.start)||formatYear(a.start))+' → '+(formatPreciseData(a.preciseDates?.end)||formatYear(a.end)))+
         (a.place?' • 📍 '+escapeHtml(a.place):'')+
-        (a.ref?' • 📖 '+escapeHtml(a.ref):'')+'</small></div>';
+        (a.ref?' • 📖 '+renderBibleRefs(a.ref):'')+'</small></div>';
     });
     html+='</section>';
   }
@@ -2911,7 +2952,7 @@ function openFullCard(o){
   }
 
   if(o.ref && o.ref!=='Aucune référence indiquée'){
-    html+='<section class="fullSection"><h3>📖 Références</h3><p>'+escapeHtml(o.ref)+'</p></section>';
+    html+='<section class="fullSection"><h3>📖 Références bibliques</h3><p>'+renderBibleRefs(o.ref)+'</p><small>Les liens bibliques ouvrent uniquement la Bible d’étude sur jw.org.</small></section>';
   }
   if(o.notes && o.notes!=='Aucune note'){
     html+='<section class="fullSection"><h3>📝 Notes</h3><p>'+escapeHtml(o.notes)+'</p></section>';
@@ -2981,7 +3022,7 @@ function renderQuickCard(o){
   const bodyText=notes || activities;
   let meta='';
   if(place) meta+='<div class="quickMetaRow"><span class="quickMetaIcon">📍</span><span><strong>Lieu</strong><br>'+escapeHtml(place)+'</span></div>';
-  if(refs) meta+='<div class="quickMetaRow"><span class="quickMetaIcon">📖</span><span><strong>Références</strong><br>'+escapeHtml(refs)+'</span></div>';
+  if(refs) meta+='<div class="quickMetaRow"><span class="quickMetaIcon">📖</span><span><strong>Références bibliques</strong><br>'+renderBibleRefs(refs)+'</span></div>';
   if(activities && notes) meta+='<div class="quickMetaRow"><span class="quickMetaIcon">🧩</span><span><strong>Périodes / fonctions</strong><br>'+escapeHtml(activities).replace(/\n/g,'<br>')+'</span></div>';
 
   const canEdit=isEditableItem(o);
@@ -3290,7 +3331,7 @@ async function v41RequestSiteAccess(){
 function v4SetTitle(){
   const el=document.querySelector('#v4TimelineTitle span');
   if(el) el.textContent=v4TimelineName||'Ma frise biblique';
-  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.2';
+  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.3';
 }
 
 function v3ApplyUi(){
@@ -3335,7 +3376,7 @@ function v4Comparable(item){
 function v3Cache(items){
   try{
     const doc={
-      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.2',
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.3',
       updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
     };
     localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
@@ -3428,7 +3469,7 @@ async function v3SyncNow(){
     v3State('Synchronisation…','wait');
     const col=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items');
 
-    // V4.3.2 : écrit chaque fiche séparément. Ainsi une fiche problématique
+    // V4.3.3 : écrit chaque fiche séparément. Ainsi une fiche problématique
     // ne bloque plus silencieusement toute la synchronisation.
     for(const id of pendingIds){
       const item=localMap.get(id);
@@ -3461,7 +3502,7 @@ async function v3SyncNow(){
     }
   }catch(e){
     v3LocalDirty=true;
-    v3CloudError('écriture V4.3.2',e);
+    v3CloudError('écriture V4.3.3',e);
   }finally{
     v3Syncing=false;
     if(v3ResyncRequested || v3LocalRevision!==revisionAtStart){
@@ -3544,7 +3585,7 @@ async function v4TryLegacyMigration(){
         name:'Ma frise biblique',ownerUid:v3User.uid,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.2'
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.3'
       });
     }
     const mref=tref.collection('members').doc(v3User.uid);
@@ -3588,7 +3629,7 @@ async function v4CreateTimeline(name){
     name,ownerUid:v3User.uid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.2'
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.3'
   });
   await tref.collection('members').doc(v3User.uid).set({
     uid:v3User.uid,email:v3User.email||'',role:'admin',
@@ -3932,9 +3973,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 4.3.2</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 4.3.3</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 4.3.2</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
+      diag.innerHTML='<strong>Version 4.3.3</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
     }
   }
   v4RenderTimelineLists();
