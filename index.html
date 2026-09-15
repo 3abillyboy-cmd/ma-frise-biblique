@@ -176,19 +176,25 @@ textarea{min-height:76px;resize:vertical}
 .activityCard button{margin-top:7px;border:0;border-radius:8px;padding:7px 9px;background:#7f1d1d;color:#fff;font-weight:700}
 .addActivityBtn{width:100%;border:0;border-radius:10px;padding:11px;background:#0f766e;color:#fff;font-weight:800}
 
-.lifeBound{padding:12px;border:1px solid transparent}
-.birthBound{background:rgba(34,197,94,.16);border-color:rgba(74,222,128,.48)}
-.birthBound:first-of-type{border-radius:14px 14px 0 0}
-.birthBound + .birthBound{margin-top:-9px;border-top:0;border-radius:0 0 14px 14px;padding-top:5px}
-.birthBound label{color:#bbf7d0;font-weight:800}
-.deathBound{background:rgba(244,63,94,.15);border-color:rgba(251,113,133,.48)}
-.deathBound + .deathBound{margin-top:-9px;border-top:0;border-radius:0 0 14px 14px;padding-top:5px}
-.deathBound:not(.deathBound + .deathBound){border-radius:14px 14px 0 0}
-.deathBound label{color:#fecdd3;font-weight:800}
-.lifePeriodsBox{background:rgba(37,99,235,.16);border-color:rgba(96,165,250,.48);margin-top:16px;border-radius:14px;padding:13px}
-.lifePeriodsBox h3{color:#bfdbfe}
-.lifePeriodsBox .smallNote{color:#cbd5e1}
-.lifePeriodsBox label{color:#dbeafe}
+.lifeBound{padding:0;border:0;background:transparent}
+.lifeSection{grid-column:1/-1;border-radius:18px;padding:15px;border:2px solid;margin:6px 0 10px;box-shadow:0 8px 22px rgba(0,0,0,.16)}
+.lifeSection .lifeBound{margin:0 0 10px;padding:0}
+.lifeSection .lifeBound:last-of-type{margin-bottom:0}
+.lifeSection .preciseDateBox{margin:12px 0 0;border-radius:14px;padding:12px}
+.birthSection{background:rgba(34,197,94,.25);border-color:rgba(74,222,128,.72)}
+.birthSection> .lifeBound:first-child label{color:#dcfce7;font-size:15px;font-weight:900}
+.birthSection label{color:#d1fae5;font-weight:800}
+.birthSection .preciseDateBox{background:rgba(6,78,59,.38);border-color:rgba(74,222,128,.45)}
+.birthSection .preciseTitle{color:#dcfce7}
+.deathSection{background:rgba(244,63,94,.24);border-color:rgba(251,113,133,.72)}
+.deathSection> .lifeBound:first-child label{color:#ffe4e6;font-size:15px;font-weight:900}
+.deathSection label{color:#ffe4e6;font-weight:800}
+.deathSection .preciseDateBox{background:rgba(127,29,29,.34);border-color:rgba(251,113,133,.45)}
+.deathSection .preciseTitle{color:#ffe4e6}
+.lifePeriodsBox{background:rgba(37,99,235,.24);border:2px solid rgba(96,165,250,.72);margin-top:8px;border-radius:18px;padding:15px;box-shadow:0 8px 22px rgba(0,0,0,.14)}
+.lifePeriodsBox h3{color:#dbeafe}
+.lifePeriodsBox .smallNote{color:#dbeafe}
+.lifePeriodsBox label{color:#e0e7ff}
 .optionalTag{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:999px;background:#1e3a8a;color:#dbeafe;font-size:10px;vertical-align:1px}
 
 
@@ -1426,7 +1432,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'4.3.6',
+    appVersion:'4.3.7',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -1754,6 +1760,23 @@ function installPreciseDateControls(){
     });
     updateGenericPreciseDateUI(key);
   });
+  groupPersonLifeSections();
+}
+function groupPersonLifeSections(){
+  const grid=document.querySelector('#personForm .formGrid'); if(!grid)return;
+  function makeSection(kind,preciseId){
+    if(grid.querySelector('.'+kind+'Section'))return;
+    const parts=[...grid.querySelectorAll('.'+kind+'Bound')];
+    const precise=document.getElementById(preciseId);
+    if(!parts.length||!precise)return;
+    const section=document.createElement('div');
+    section.className='lifeSection '+kind+'Section formFull';
+    grid.insertBefore(section,parts[0]);
+    parts.forEach(el=>section.appendChild(el));
+    section.appendChild(precise);
+  }
+  makeSection('birth','pStartPreciseBox');
+  makeSection('death','pEndPreciseBox');
 }
 function updateGenericPreciseDateUI(key){
   const cfg=PRECISE_DATE_FIELDS[key]; if(!cfg)return;
@@ -2888,7 +2911,7 @@ function quickDatesLabel(o){
   return '';
 }
 
-// V4.3.6 — Formulaire personnage plus lisible : naissance et mort avant les périodes de vie.
+// V4.3.7 — Formulaire personnage plus lisible : naissance et mort avant les périodes de vie.
 const JW_BOOKS={
   'genese':'Genèse','exode':'Exode','levitique':'Lévitique','nombres':'Nombres','deuteronome':'Deutéronome',
   'josue':'Josué','juges':'Juges','ruth':'Ruth','1 samuel':'1-Samuel','2 samuel':'2-Samuel','1 rois':'1-Rois','2 rois':'2-Rois',
@@ -3346,7 +3369,7 @@ async function v41RequestSiteAccess(){
 function v4SetTitle(){
   const el=document.querySelector('#v4TimelineTitle span');
   if(el) el.textContent=v4TimelineName||'Ma frise biblique';
-  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.6';
+  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.7';
 }
 
 function v3ApplyUi(){
@@ -3391,7 +3414,7 @@ function v4Comparable(item){
 function v3Cache(items){
   try{
     const doc={
-      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.6',
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.7',
       updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
     };
     localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
@@ -3517,7 +3540,7 @@ async function v3SyncNow(){
     }
   }catch(e){
     v3LocalDirty=true;
-    v3CloudError('écriture V4.3.6',e);
+    v3CloudError('écriture V4.3.7',e);
   }finally{
     v3Syncing=false;
     if(v3ResyncRequested || v3LocalRevision!==revisionAtStart){
@@ -3600,7 +3623,7 @@ async function v4TryLegacyMigration(){
         name:'Ma frise biblique',ownerUid:v3User.uid,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.6'
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.7'
       });
     }
     const mref=tref.collection('members').doc(v3User.uid);
@@ -3644,7 +3667,7 @@ async function v4CreateTimeline(name){
     name,ownerUid:v3User.uid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.6'
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.7'
   });
   await tref.collection('members').doc(v3User.uid).set({
     uid:v3User.uid,email:v3User.email||'',role:'admin',
@@ -3988,9 +4011,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 4.3.4</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 4.3.7</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 4.3.4</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
+      diag.innerHTML='<strong>Version 4.3.7</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
     }
   }
   v4RenderTimelineLists();
