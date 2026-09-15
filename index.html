@@ -1408,7 +1408,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'4.2.1',
+    appVersion:'4.3.2',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -3290,7 +3290,7 @@ async function v41RequestSiteAccess(){
 function v4SetTitle(){
   const el=document.querySelector('#v4TimelineTitle span');
   if(el) el.textContent=v4TimelineName||'Ma frise biblique';
-  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.2';
+  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.2';
 }
 
 function v3ApplyUi(){
@@ -3335,7 +3335,7 @@ function v4Comparable(item){
 function v3Cache(items){
   try{
     const doc={
-      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.1',
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.2',
       updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
     };
     localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
@@ -3377,7 +3377,7 @@ function v42RefreshPending(){
 
   for(const [id,item] of localMap){
     const cloud=v3CloudMap.get(id);
-    if(!cloud || v4Comparable(cloud)!==v4Comparable(item)) pending.add(id);
+    if(!cloud || v4Comparable(v3NormalizeCloudItem(cloud,0)||cloud)!==v4Comparable(item)) pending.add(id);
   }
   for(const id of v3CloudIds){
     if(!localMap.has(id)) deleted.add(id);
@@ -3424,58 +3424,32 @@ async function v3SyncNow(){
   const pendingDeletes=new Set(v42PendingDeletes);
   const localMap=new Map(v3AllItems().map(x=>[x.id,x]));
   v3Syncing=true;
-
   try{
     v3State('Synchronisation…','wait');
-    let batch=v3Db.batch(), ops=0;
-    const flush=async()=>{if(ops){await batch.commit();batch=v3Db.batch();ops=0;}};
+    const col=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items');
 
-    // V4.2 : chaque fiche modifiée est envoyée indépendamment.
+    // V4.3.2 : écrit chaque fiche séparément. Ainsi une fiche problématique
+    // ne bloque plus silencieusement toute la synchronisation.
     for(const id of pendingIds){
       const item=localMap.get(id);
       if(!item) continue;
       const cleanItem=v3CleanForFirestore(item);
       const approx=JSON.stringify(cleanItem).length;
-      if(approx>900000){
-        alert('Une fiche est trop volumineuse pour la synchronisation en ligne. Retire ou réduis son image.');
-        continue;
-      }
-      const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(id);
-      batch.set(ref,{...cleanItem,_updatedAt:firebase.firestore.FieldValue.serverTimestamp(),_updatedBy:v3User.uid});
-      ops++;
-      if(ops>=350) await flush();
+      if(approx>900000) throw new Error('La fiche « '+(item.title||item.name||id)+' » est trop volumineuse (image à réduire).');
+      await col.doc(id).set({...cleanItem,
+        _updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+        _updatedBy:v3User.uid
+      });
     }
-
-    // Seules les suppressions explicitement détectées avant l'envoi sont supprimées.
-    for(const id of pendingDeletes){
-      const ref=v3Db.collection('timelines').doc(V3_TIMELINE_ID).collection('items').doc(id);
-      batch.delete(ref); ops++;
-      if(ops>=350) await flush();
-    }
-
-    const tref=v3Db.collection('timelines').doc(V3_TIMELINE_ID);
-    batch.set(tref,{
-      name:v4TimelineName,
-      schemaVersion:DATA_SCHEMA_VERSION,
-      appVersion:'4.2.1',
-      updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-      updatedBy:v3User.uid
-    },{merge:true}); ops++;
-    await flush();
-
-    if(v3LocalRevision===revisionAtStart){
-      for(const id of pendingIds) v42PendingIds.delete(id);
-      for(const id of pendingDeletes) v42PendingDeletes.delete(id);
-    }
+    for(const id of pendingDeletes) await col.doc(id).delete();
 
     v3ClearCloudError();
+    const fresh=await col.get({source:'server'});
+    const freshItems=fresh.docs.map(d=>({id:d.id,...d.data()}));
+    v3CloudIds=new Set(freshItems.map(x=>x.id));
+    v3CloudMap=new Map(freshItems.map(x=>[x.id,x]));
 
-    // Relire le serveur uniquement quand aucune nouvelle modification locale n'est arrivée.
     if(v3LocalRevision===revisionAtStart){
-      const fresh=await tref.collection('items').get({source:'server'});
-      const freshItems=fresh.docs.map(d=>({id:d.id,...d.data()}));
-      v3CloudIds=new Set(freshItems.map(x=>x.id));
-      v3CloudMap=new Map(freshItems.map(x=>[x.id,x]));
       v42PendingIds.clear();
       v42PendingDeletes.clear();
       v3LocalDirty=false;
@@ -3483,11 +3457,11 @@ async function v3SyncNow(){
       v3State('En ligne','ok');
     }else{
       v42RefreshPending();
-      v3State('Synchronisation…','wait');
+      v3State(v3LocalDirty?'Synchronisation…':'En ligne',v3LocalDirty?'wait':'ok');
     }
   }catch(e){
     v3LocalDirty=true;
-    v3CloudError('écriture/synchronisation',e);
+    v3CloudError('écriture V4.3.2',e);
   }finally{
     v3Syncing=false;
     if(v3ResyncRequested || v3LocalRevision!==revisionAtStart){
@@ -3570,7 +3544,7 @@ async function v4TryLegacyMigration(){
         name:'Ma frise biblique',ownerUid:v3User.uid,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.1'
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.2'
       });
     }
     const mref=tref.collection('members').doc(v3User.uid);
@@ -3614,7 +3588,7 @@ async function v4CreateTimeline(name){
     name,ownerUid:v3User.uid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.2.1'
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.2'
   });
   await tref.collection('members').doc(v3User.uid).set({
     uid:v3User.uid,email:v3User.email||'',role:'admin',
@@ -3958,9 +3932,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 4.2.1</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 4.3.2</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 4.2.1</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.';
+      diag.innerHTML='<strong>Version 4.3.2</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
     }
   }
   v4RenderTimelineLists();
