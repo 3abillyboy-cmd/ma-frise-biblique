@@ -1432,7 +1432,7 @@ function makeDataDocument(items){
   return {
     app:'Ma frise biblique',
     schemaVersion:DATA_SCHEMA_VERSION,
-    appVersion:'4.3.7',
+    appVersion:'4.3.8',
     updatedAt:new Date().toISOString(),
     timelineId:'family-main',
     items:items.map((x,i)=>migrateItem(x,i)).filter(Boolean)
@@ -1761,6 +1761,7 @@ function installPreciseDateControls(){
     updateGenericPreciseDateUI(key);
   });
   groupPersonLifeSections();
+  groupActivityPreciseSections();
 }
 function groupPersonLifeSections(){
   const grid=document.querySelector('#personForm .formGrid'); if(!grid)return;
@@ -1777,6 +1778,18 @@ function groupPersonLifeSections(){
   }
   makeSection('birth','pStartPreciseBox');
   makeSection('death','pEndPreciseBox');
+}
+function groupActivityPreciseSections(){
+  const box=document.querySelector('#personForm .lifePeriodsBox');
+  if(!box)return;
+  const start=document.getElementById('aStartPreciseBox');
+  const end=document.getElementById('aEndPreciseBox');
+  const button=box.querySelector('.addActivityBtn');
+  if(!start||!end||!button)return;
+  // Les dates jour/mois font partie intégrante de la période de vie.
+  // Elles restent donc dans la carte bleue, avant le bouton d'ajout final.
+  box.insertBefore(start,button);
+  box.insertBefore(end,button);
 }
 function updateGenericPreciseDateUI(key){
   const cfg=PRECISE_DATE_FIELDS[key]; if(!cfg)return;
@@ -2911,7 +2924,7 @@ function quickDatesLabel(o){
   return '';
 }
 
-// V4.3.7 — Formulaire personnage plus lisible : naissance et mort avant les périodes de vie.
+// V4.3.8 — Formulaire personnage plus lisible : naissance et mort avant les périodes de vie.
 const JW_BOOKS={
   'genese':'Genèse','exode':'Exode','levitique':'Lévitique','nombres':'Nombres','deuteronome':'Deutéronome',
   'josue':'Josué','juges':'Juges','ruth':'Ruth','1 samuel':'1-Samuel','2 samuel':'2-Samuel','1 rois':'1-Rois','2 rois':'2-Rois',
@@ -3369,7 +3382,7 @@ async function v41RequestSiteAccess(){
 function v4SetTitle(){
   const el=document.querySelector('#v4TimelineTitle span');
   if(el) el.textContent=v4TimelineName||'Ma frise biblique';
-  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.7';
+  document.title=(v4TimelineName||'Ma frise biblique')+' — V4.3.8';
 }
 
 function v3ApplyUi(){
@@ -3414,7 +3427,7 @@ function v4Comparable(item){
 function v3Cache(items){
   try{
     const doc={
-      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.7',
+      app:'Ma frise biblique',schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.8',
       updatedAt:new Date().toISOString(),timelineId:V3_TIMELINE_ID,timelineName:v4TimelineName,items
     };
     localStorage.setItem('maFriseBiblique_cache_'+V3_TIMELINE_ID,JSON.stringify(doc));
@@ -3540,7 +3553,7 @@ async function v3SyncNow(){
     }
   }catch(e){
     v3LocalDirty=true;
-    v3CloudError('écriture V4.3.7',e);
+    v3CloudError('écriture V4.3.8',e);
   }finally{
     v3Syncing=false;
     if(v3ResyncRequested || v3LocalRevision!==revisionAtStart){
@@ -3623,7 +3636,7 @@ async function v4TryLegacyMigration(){
         name:'Ma frise biblique',ownerUid:v3User.uid,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.7'
+        schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.8'
       });
     }
     const mref=tref.collection('members').doc(v3User.uid);
@@ -3667,7 +3680,7 @@ async function v4CreateTimeline(name){
     name,ownerUid:v3User.uid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.7'
+    schemaVersion:DATA_SCHEMA_VERSION,appVersion:'4.3.8'
   });
   await tref.collection('members').doc(v3User.uid).set({
     uid:v3User.uid,email:v3User.email||'',role:'admin',
@@ -4011,9 +4024,9 @@ function v3OpenAccount(){
   if(diag){
     diag.style.display='block';
     if(v3LastCloudError){
-      diag.innerHTML='<strong>Version 4.3.7</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
+      diag.innerHTML='<strong>Version 4.3.8</strong><br><strong>Diagnostic Firebase :</strong><br>'+escapeHtml(v3LastCloudErrorWhere)+'<br>'+escapeHtml(v3LastCloudError);
     }else{
-      diag.innerHTML='<strong>Version 4.3.7</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
+      diag.innerHTML='<strong>Version 4.3.8</strong><br>Frise : '+escapeHtml(v4TimelineName)+'<br>Firebase : aucune erreur détectée.<br>Synchronisation : '+(v3Syncing?'en cours':(v3LocalDirty?'modification en attente':'à jour'))+'.<br>Fiches en attente : '+v42PendingIds.size+' — suppressions : '+v42PendingDeletes.size+'.';
     }
   }
   v4RenderTimelineLists();
